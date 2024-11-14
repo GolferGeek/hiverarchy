@@ -17,14 +17,20 @@ function CommentList({ postId }) {
     try {
       const { data, error } = await supabase
         .from('comments')
-        .select('*, user:user_id(email)')
+        .select('*, profiles(email)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true })
 
-      if (error) throw error
+      if (error) {
+        console.error('Detailed error:', error)
+        throw error
+      }
+      
+      console.log('Comments data:', data)
+      
       setComments(data.map(comment => ({
         ...comment,
-        user_email: comment.user.email
+        user_email: comment.profiles?.email
       })))
     } catch (error) {
       console.error('Error fetching comments:', error)

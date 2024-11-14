@@ -1,47 +1,71 @@
-import InterestCard from '../components/InterestCard'
-
-const interests = [
-  {
-    title: 'Coder',
-    description: 'Exploring the world of programming and software development',
-    image: '/images/coder.jpg',
-    link: '/coder'
-  },
-  {
-    title: 'Golfer',
-    description: 'Sharing golf experiences, tips, and achievements',
-    image: '/images/golfer.jpg',
-    link: '/golfer'
-  },
-  {
-    title: 'Mentor',
-    description: 'Guiding and supporting others in their journey',
-    image: '/images/mentor.jpg',
-    link: '/mentor'
-  },
-  {
-    title: 'Aging',
-    description: 'Insights and reflections on the aging process',
-    image: '/images/aging.jpg',
-    link: '/aging'
-  }
-]
+import { Link } from 'react-router-dom'
 
 function Home() {
   return (
-    <div>
-      <h1>Welcome to GG Blog</h1>
-      <div className="card-grid">
-        {interests.map((interest) => (
-          <InterestCard
-            key={interest.title}
-            title={interest.title}
-            description={interest.description}
-            image={interest.image}
-            link={interest.link}
-          />
-        ))}
-      </div>
+    <div className="landing-page">
+      {/* Hero Section */}
+      <section className="hero-section">
+        <div className="hero-content">
+          <h1>Welcome to GolferGeek</h1>
+          <p className="hero-subtitle">Exploring the intersections of technology, golf, mentorship, and life's journey</p>
+        </div>
+      </section>
+
+      {/* Coder Section */}
+      <section className="content-section coder-section">
+        <div className="section-content">
+          <div className="section-text">
+            <h2>Coding Journey</h2>
+            <p>Exploring the world of programming and software development</p>
+            <Link to="/coder" className="section-link">View Coding Posts</Link>
+          </div>
+          <div className="section-image">
+            <img src="/gg-blog/images/coder.jpg" alt="Coding" />
+          </div>
+        </div>
+      </section>
+
+      {/* Golfer Section */}
+      <section className="content-section golfer-section">
+        <div className="section-content reverse">
+          <div className="section-image">
+            <img src="/gg-blog/images/golfer.jpg" alt="Golf" />
+          </div>
+          <div className="section-text">
+            <h2>Golf Adventures</h2>
+            <p>Sharing golf experiences, tips, and achievements</p>
+            <Link to="/golfer" className="section-link">View Golf Posts</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Mentor Section */}
+      <section className="content-section mentor-section">
+        <div className="section-content">
+          <div className="section-text">
+            <h2>Mentorship</h2>
+            <p>Guiding and supporting others in their journey</p>
+            <Link to="/mentor" className="section-link">View Mentoring Posts</Link>
+          </div>
+          <div className="section-image">
+            <img src="/gg-blog/images/mentor.jpg" alt="Mentoring" />
+          </div>
+        </div>
+      </section>
+
+      {/* Aging Section */}
+      <section className="content-section aging-section">
+        <div className="section-content reverse">
+          <div className="section-image">
+            <img src="/gg-blog/images/aging.jpg" alt="Aging" />
+          </div>
+          <div className="section-text">
+            <h2>Life's Journey</h2>
+            <p>Insights and reflections on the aging process</p>
+            <Link to="/aging" className="section-link">View Aging Posts</Link>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

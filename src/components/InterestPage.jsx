@@ -18,7 +18,7 @@ function InterestPage({ category, title }) {
       let query = supabase
         .from('posts')
         .select('*')
-        .contains('categories', [category])
+        .contains('interests', [category])
         .order('created_at', { ascending: false })
 
       if (searchTerm) {
@@ -39,6 +39,11 @@ function InterestPage({ category, title }) {
     }
   }
 
+  const handlePostDelete = async (postId) => {
+    setPosts(posts.filter(post => post.id !== postId))
+    await fetchPosts()
+  }
+
   return (
     <div>
       <h1>{title}</h1>
@@ -50,7 +55,11 @@ function InterestPage({ category, title }) {
         <div className="post-list">
           {posts.length > 0 ? (
             posts.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <PostCard 
+                key={post.id} 
+                post={post} 
+                onDelete={handlePostDelete} 
+              />
             ))
           ) : (
             <p>No posts found</p>

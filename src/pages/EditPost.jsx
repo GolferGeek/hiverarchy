@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import MDEditor from '@uiw/react-md-editor'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import ImageUpload from '../components/ImageUpload'
 
 function EditPost() {
   const { id } = useParams()
@@ -12,6 +13,7 @@ function EditPost() {
   const [excerpt, setExcerpt] = useState('')
   const [interests, setInterests] = useState([])
   const [loading, setLoading] = useState(true)
+  const [images, setImages] = useState([])
   const { user } = useAuth()
 
   const availableInterests = [
@@ -39,6 +41,7 @@ function EditPost() {
       setContent(data.content)
       setExcerpt(data.excerpt)
       setInterests(data.interests)
+      setImages(data.images || [])
     } catch (error) {
       console.error('Error fetching post:', error)
       navigate('/')
@@ -56,6 +59,10 @@ function EditPost() {
         return prev.filter(int => int !== value)
       }
     })
+  }
+
+  function handleImageUpload(url) {
+    setImages([...images, url])
   }
 
   async function handleSubmit(e) {
@@ -76,6 +83,7 @@ function EditPost() {
           content,
           excerpt,
           interests,
+          images,
           user_id: user.id
         })
         .eq('id', id)
@@ -149,6 +157,21 @@ function EditPost() {
             preview="edit"
             height={400}
           />
+        </div>
+
+        <div className="form-group">
+          <label>Images</label>
+          <ImageUpload onUpload={handleImageUpload} />
+          <div className="image-preview">
+            {images.map((url, index) => (
+              <img 
+                key={index} 
+                src={url} 
+                alt={`Upload ${index + 1}`}
+                className="preview-image"
+              />
+            ))}
+          </div>
         </div>
 
         <button type="submit" className="submit-btn" disabled={loading}>

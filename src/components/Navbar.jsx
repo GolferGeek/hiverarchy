@@ -7,7 +7,7 @@ function Navbar() {
   return (
     <nav className="navbar">
       <div className="container">
-        <Link to="/" className="nav-brand">GG Blog</Link>
+        <Link to="/" className="nav-brand">GolferGeek</Link>
         <div className="nav-links">
           <Link to="/coder">Coder</Link>
           <Link to="/golfer">Golfer</Link>
