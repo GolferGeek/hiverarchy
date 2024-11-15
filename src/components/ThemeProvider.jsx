@@ -1,11 +1,24 @@
-import { createContext, useContext, useState, useMemo } from 'react'
+import { createContext, useContext, useState, useMemo, useEffect } from 'react'
 import { ThemeProvider as MUIThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} })
 
 export function ThemeProvider({ children }) {
-  const [mode, setMode] = useState('light')
+  // Initialize with system preference
+  const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const [mode, setMode] = useState(prefersDarkMode ? 'dark' : 'light')
+
+  // Listen for system changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (e) => {
+      setMode(e.matches ? 'dark' : 'light')
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
   const colorMode = useMemo(
     () => ({
