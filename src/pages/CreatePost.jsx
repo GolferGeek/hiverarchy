@@ -4,6 +4,18 @@ import MDEditor from '@uiw/react-md-editor'
 import { supabase } from '../lib/supabase'
 import ImageUpload from '../components/ImageUpload'
 import { useAuth } from '../contexts/AuthContext'
+import {
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
+  Button,
+  Box,
+  Alert
+} from '@mui/material'
 
 function CreatePost() {
   const navigate = useNavigate()
@@ -14,6 +26,7 @@ function CreatePost() {
   const [interests, setInterests] = useState(['coder'])
   const [loading, setLoading] = useState(false)
   const [images, setImages] = useState([])
+  const [error, setError] = useState('')
 
   const availableInterests = [
     { value: 'coder', label: 'Coder' },
@@ -22,13 +35,12 @@ function CreatePost() {
     { value: 'aging', label: 'Aging' }
   ]
 
-  function handleInterestChange(e) {
-    const value = e.target.value
+  function handleInterestChange(value) {
     setInterests(prev => {
-      if (e.target.checked) {
-        return [...prev, value]
-      } else {
+      if (prev.includes(value)) {
         return prev.filter(int => int !== value)
+      } else {
+        return [...prev, value]
       }
     })
   }
@@ -37,12 +49,13 @@ function CreatePost() {
     e.preventDefault()
     
     if (interests.length === 0) {
-      alert('Please select at least one interest')
+      setError('Please select at least one interest')
       return
     }
 
     try {
       setLoading(true)
+      setError('')
       
       const { data, error } = await supabase
         .from('posts')
@@ -63,94 +76,121 @@ function CreatePost() {
       navigate(`/post/${data.id}`)
     } catch (error) {
       console.error('Error creating post:', error)
-      alert('Error creating post. Please try again.')
+      setError('Error creating post. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  function handleImageUpload(url) {
-    setImages([...images, url])
+  const handleImageUpload = (url) => {
+    setImages(prev => [...prev, url])
   }
 
   return (
-    <div className="create-post">
-      <h1>Create New Post</h1>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="title">Title</label>
-          <input
-            type="text"
-            id="title"
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Create New Post
+        </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <TextField
+            label="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
+            fullWidth
           />
-        </div>
 
-        <div className="form-group">
-          <label>Interests</label>
-          <div className="interests-group">
-            {availableInterests.map(({ value, label }) => (
-              <label key={value} className="interest-checkbox">
-                <input
-                  type="checkbox"
-                  value={value}
-                  checked={interests.includes(value)}
-                  onChange={handleInterestChange}
+          <FormGroup>
+            <Typography variant="subtitle1" gutterBottom>
+              Interests
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {availableInterests.map(({ value, label }) => (
+                <FormControlLabel
+                  key={value}
+                  control={
+                    <Checkbox
+                      checked={interests.includes(value)}
+                      onChange={() => handleInterestChange(value)}
+                    />
+                  }
+                  label={label}
                 />
-                {label}
-              </label>
-            ))}
-          </div>
-        </div>
+              ))}
+            </Box>
+          </FormGroup>
 
-        <div className="form-group">
-          <label htmlFor="excerpt">Excerpt</label>
-          <textarea
-            id="excerpt"
+          <TextField
+            label="Excerpt"
             value={excerpt}
             onChange={(e) => setExcerpt(e.target.value)}
-            placeholder="Write a brief summary of your post..."
-            maxLength={150}
+            multiline
             rows={3}
             required
+            fullWidth
+            inputProps={{ maxLength: 150 }}
+            helperText={`${excerpt.length}/150 characters`}
           />
-          <small className="character-count">
-            {excerpt.length}/150 characters
-          </small>
-        </div>
 
-        <div className="form-group">
-          <label>Content</label>
-          <MDEditor
-            value={content}
-            onChange={setContent}
-            preview="edit"
-            height={400}
-          />
-        </div>
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              Content
+            </Typography>
+            <MDEditor
+              value={content}
+              onChange={setContent}
+              preview="edit"
+              height={400}
+            />
+          </Box>
 
-        <div className="form-group">
-          <label>Images</label>
-          <ImageUpload onUpload={handleImageUpload} />
-          <div className="image-preview">
-            {images.map((url, index) => (
-              <img 
-                key={index} 
-                src={url} 
-                alt={`Upload ${index + 1}`}
-                className="preview-image"
-              />
-            ))}
-          </div>
-        </div>
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              Images
+            </Typography>
+            <ImageUpload onUpload={handleImageUpload} />
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2, 
+              flexWrap: 'wrap',
+              mt: 2 
+            }}>
+              {images.map((url, index) => (
+                <Box
+                  key={index}
+                  component="img"
+                  src={url}
+                  alt={`Upload ${index + 1}`}
+                  sx={{
+                    width: 200,
+                    height: 150,
+                    objectFit: 'cover',
+                    borderRadius: 1
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
 
-        <button type="submit" className="submit-btn" disabled={loading}>
-          {loading ? 'Creating...' : 'Create Post'}
-        </button>
-      </form>
-    </div>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            size="large"
+          >
+            {loading ? 'Creating...' : 'Create Post'}
+          </Button>
+        </Box>
+      </Paper>
+    </Container>
   )
 }
 

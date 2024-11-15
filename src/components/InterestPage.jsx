@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import SearchBar from './SearchBar'
+import { 
+  Container,
+  Typography,
+  Box,
+  TextField,
+  InputAdornment,
+  CircularProgress,
+  Grid
+} from '@mui/material'
+import { Search as SearchIcon } from '@mui/icons-material'
 import PostCard from './PostCard'
 
 function InterestPage({ category, title }) {
@@ -29,7 +38,6 @@ function InterestPage({ category, title }) {
       }
 
       const { data, error } = await query
-
       if (error) throw error
       setPosts(data)
     } catch (error) {
@@ -45,29 +53,77 @@ function InterestPage({ category, title }) {
   }
 
   return (
-    <div>
-      <h1>{title}</h1>
-      <SearchBar value={searchTerm} onChange={setSearchTerm} />
-      
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Typography 
+        variant="h2" 
+        component="h1" 
+        gutterBottom 
+        sx={{ 
+          textAlign: 'center',
+          mb: 4,
+          fontWeight: 'bold'
+        }}
+      >
+        {title}
+      </Typography>
+
+      <Box sx={{ mb: 4, maxWidth: 600, mx: 'auto' }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Search posts by title..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Box>
+
       {loading ? (
-        <p>Loading posts...</p>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '200px'
+          }}
+        >
+          <CircularProgress />
+        </Box>
       ) : (
-        <div className="post-list">
+        <Grid container spacing={3}>
           {posts.length > 0 ? (
             posts.map((post) => (
-              <PostCard 
-                key={post.id} 
-                post={post} 
-                onDelete={handlePostDelete} 
-              />
+              <Grid item xs={12} key={post.id}>
+                <PostCard 
+                  post={post} 
+                  onDelete={handlePostDelete}
+                />
+              </Grid>
             ))
           ) : (
-            <p>No posts found</p>
+            <Grid item xs={12}>
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  textAlign: 'center',
+                  color: 'text.secondary',
+                  py: 8
+                }}
+              >
+                No posts found
+              </Typography>
+            </Grid>
           )}
-        </div>
+        </Grid>
       )}
-    </div>
+    </Container>
   )
 }
 
-export default InterestPage 
+export default InterestPage

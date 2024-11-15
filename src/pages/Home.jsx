@@ -1,72 +1,116 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { 
+  Box, 
+  Typography, 
+  Container, 
+  Card, 
+  CardContent, 
+  CardMedia, 
+  Button
+} from '@mui/material'
 
 function Home() {
+  const navigate = useNavigate()
+
+  const sections = [
+    {
+      title: 'Coding Journey',
+      description: 'Exploring the world of programming and software development',
+      image: '/gg-blog/images/coder.jpg',
+      link: '/coder',
+    },
+    {
+      title: 'Golf Adventures',
+      description: 'Sharing golf experiences, tips, and achievements',
+      image: '/gg-blog/images/golfer.jpg',
+      link: '/golfer',
+    },
+    {
+      title: 'Mentorship',
+      description: 'Guiding and supporting others in their journey',
+      image: '/gg-blog/images/mentor.jpg',
+      link: '/mentor',
+    },
+    {
+      title: "Life's Journey",
+      description: 'Insights and reflections on the aging process',
+      image: '/gg-blog/images/aging.jpg',
+      link: '/aging',
+    },
+  ]
+
   return (
-    <div className="landing-page">
+    <Box>
       {/* Hero Section */}
-      <section className="hero-section">
-        <div className="hero-content">
-          <h1>Welcome to GolferGeek</h1>
-          <p className="hero-subtitle">Exploring the intersections of technology, golf, mentorship, and life's journey</p>
-        </div>
-      </section>
+      <Box 
+        sx={{
+          bgcolor: 'primary.main',
+          color: 'white',
+          py: 8,
+          textAlign: 'center'
+        }}
+      >
+        <Container maxWidth="md">
+          <Typography variant="h2" component="h1" gutterBottom>
+            Welcome to GolferGeek
+          </Typography>
+          <Typography variant="h5">
+            Exploring the intersections of technology, golf, mentorship, and life's journey
+          </Typography>
+        </Container>
+      </Box>
 
-      {/* Coder Section */}
-      <section className="content-section coder-section">
-        <div className="section-content">
-          <div className="section-text">
-            <h2>Coding Journey</h2>
-            <p>Exploring the world of programming and software development</p>
-            <Link to="/coder" className="section-link">View Coding Posts</Link>
-          </div>
-          <div className="section-image">
-            <img src="/gg-blog/images/coder.jpg" alt="Coding" />
-          </div>
-        </div>
-      </section>
-
-      {/* Golfer Section */}
-      <section className="content-section golfer-section">
-        <div className="section-content reverse">
-          <div className="section-image">
-            <img src="/gg-blog/images/golfer.jpg" alt="Golf" />
-          </div>
-          <div className="section-text">
-            <h2>Golf Adventures</h2>
-            <p>Sharing golf experiences, tips, and achievements</p>
-            <Link to="/golfer" className="section-link">View Golf Posts</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Mentor Section */}
-      <section className="content-section mentor-section">
-        <div className="section-content">
-          <div className="section-text">
-            <h2>Mentorship</h2>
-            <p>Guiding and supporting others in their journey</p>
-            <Link to="/mentor" className="section-link">View Mentoring Posts</Link>
-          </div>
-          <div className="section-image">
-            <img src="/gg-blog/images/mentor.jpg" alt="Mentoring" />
-          </div>
-        </div>
-      </section>
-
-      {/* Aging Section */}
-      <section className="content-section aging-section">
-        <div className="section-content reverse">
-          <div className="section-image">
-            <img src="/gg-blog/images/aging.jpg" alt="Aging" />
-          </div>
-          <div className="section-text">
-            <h2>Life's Journey</h2>
-            <p>Insights and reflections on the aging process</p>
-            <Link to="/aging" className="section-link">View Aging Posts</Link>
-          </div>
-        </div>
-      </section>
-    </div>
+      {/* Content Sections */}
+      <Container sx={{ py: 8 }} maxWidth="lg">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {sections.map((section, index) => (
+            <Card 
+              key={section.title}
+              sx={{ 
+                display: 'flex',
+                flexDirection: index % 2 === 0 ? 'row' : 'row-reverse',
+                overflow: 'hidden',
+                transition: 'transform 0.3s ease-in-out',
+                '&:hover': {
+                  transform: 'scale(1.02)'
+                }
+              }}
+            >
+              <CardMedia
+                component="img"
+                sx={{ width: '50%' }}
+                image={section.image}
+                alt={section.title}
+              />
+              <CardContent 
+                sx={{ 
+                  width: '50%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  p: 4
+                }}
+              >
+                <Typography variant="h4" component="h2" gutterBottom>
+                  {section.title}
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  {section.description}
+                </Typography>
+                <Button
+                  onClick={() => navigate(section.link)}
+                  variant="contained"
+                  size="large"
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  View {section.title} Posts
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
+      </Container>
+    </Box>
   )
 }
 
