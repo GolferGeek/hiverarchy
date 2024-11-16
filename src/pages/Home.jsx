@@ -8,36 +8,20 @@ import {
   CardMedia, 
   Button
 } from '@mui/material'
+import { useInterests } from '../contexts/InterestContext'
+import MDEditor from '@uiw/react-md-editor'
 
 function Home() {
   const navigate = useNavigate()
+  const { interests, loading } = useInterests()
 
-  const sections = [
-    {
-      title: 'Coding Journey',
-      description: 'Exploring the world of programming and software development',
-      image: '/gg-blog/images/coder.jpg',
-      link: '/coder',
-    },
-    {
-      title: 'Golf Adventures',
-      description: 'Sharing golf experiences, tips, and achievements',
-      image: '/gg-blog/images/golfer.jpg',
-      link: '/golfer',
-    },
-    {
-      title: 'Mentorship',
-      description: 'Guiding and supporting others in their journey',
-      image: '/gg-blog/images/mentor.jpg',
-      link: '/mentor',
-    },
-    {
-      title: "Life's Journey",
-      description: 'Insights and reflections on the aging process',
-      image: '/gg-blog/images/aging.jpg',
-      link: '/aging',
-    },
-  ]
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    )
+  }
 
   return (
     <Box>
@@ -63,9 +47,9 @@ function Home() {
       {/* Content Sections */}
       <Container sx={{ py: 8 }} maxWidth="lg">
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {sections.map((section, index) => (
+          {interests.map((section, index) => (
             <Card 
-              key={section.title}
+              key={section.id}
               sx={{ 
                 display: 'flex',
                 flexDirection: index % 2 === 0 ? 'row' : 'row-reverse',
@@ -79,7 +63,7 @@ function Home() {
               <CardMedia
                 component="img"
                 sx={{ width: '50%' }}
-                image={section.image}
+                image={section.image_path}
                 alt={section.title}
               />
               <CardContent 
@@ -87,24 +71,54 @@ function Home() {
                   width: '50%',
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'center',
-                  p: 4
+                  p: 4,
+                  height: '500px',
+                  position: 'relative'
                 }}
               >
-                <Typography variant="h4" component="h2" gutterBottom>
-                  {section.title}
-                </Typography>
-                <Typography variant="body1" paragraph>
-                  {section.description}
-                </Typography>
-                <Button
-                  onClick={() => navigate(section.link)}
-                  variant="contained"
-                  size="large"
-                  sx={{ alignSelf: 'flex-start' }}
-                >
-                  View {section.title} Posts
-                </Button>
+                <Box sx={{ mb: 4 }}>
+                  <Typography 
+                    variant="h4" 
+                    component="h2" 
+                    gutterBottom
+                    sx={{ mb: 3 }}
+                  >
+                    {section.title}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ 
+                  flex: 1,
+                  overflow: 'auto',
+                  mb: 5
+                }}>
+                  <Box data-color-mode="light">
+                    <MDEditor.Markdown 
+                      source={typeof section.description === 'object'
+                        ? JSON.stringify(section.description, null, 2)
+                        : section.description || ''} 
+                      style={{ 
+                        whiteSpace: 'pre-wrap',
+                        backgroundColor: 'transparent',
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                  </Box>
+                </Box>
+
+                <Box sx={{ 
+                  position: 'absolute',
+                  bottom: 32,
+                  left: 32
+                }}>
+                  <Button
+                    onClick={() => navigate(section.route_path)}
+                    variant="contained"
+                    size="large"
+                  >
+                    Explore {section.title}
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
           ))}
@@ -114,4 +128,4 @@ function Home() {
   )
 }
 
-export default Home 
+export default Home

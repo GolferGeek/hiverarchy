@@ -14,7 +14,8 @@ import {
   Checkbox,
   Button,
   Box,
-  Alert
+  Alert,
+  Grid
 } from '@mui/material'
 
 function CreatePost() {
@@ -53,11 +54,17 @@ function CreatePost() {
       return
     }
 
+    if (!title || !content) {
+      setError('Please fill in all required fields')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
     try {
-      setLoading(true)
-      setError('')
-      
-      const { data, error } = await supabase
+      // Insert post
+      const { data: post, error: postError } = await supabase
         .from('posts')
         .insert([
           {
@@ -65,30 +72,44 @@ function CreatePost() {
             content,
             excerpt,
             interests,
-            images,
-            user_id: user.id
+            author_id: user.id
           }
         ])
         .select()
         .single()
 
-      if (error) throw error
-      navigate(`/post/${data.id}`)
+      if (postError) throw postError
+
+      // Handle image uploads if any
+      if (images.length > 0) {
+        const imagePromises = images.map(async (image) => {
+          const { error: imageError } = await supabase
+            .from('images')
+            .insert([
+              {
+                url: image,
+                post_id: post.id
+              }
+            ])
+          
+          if (imageError) throw imageError
+        })
+
+        await Promise.all(imagePromises)
+      }
+
+      navigate('/post/' + post.id)
     } catch (error) {
       console.error('Error creating post:', error)
-      setError('Error creating post. Please try again.')
+      setError('Failed to create post. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleImageUpload = (url) => {
-    setImages(prev => [...prev, url])
-  }
-
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Paper sx={{ p: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Create New Post
         </Typography>
@@ -99,99 +120,99 @@ function CreatePost() {
           </Alert>
         )}
 
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <TextField
-            label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            fullWidth
-          />
+        <form onSubmit={handleSubmit}>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <TextField
+                label="Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                fullWidth
+                required
+                variant="outlined"
+              />
+            </Grid>
 
-          <FormGroup>
-            <Typography variant="subtitle1" gutterBottom>
-              Interests
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {availableInterests.map(({ value, label }) => (
-                <FormControlLabel
-                  key={value}
-                  control={
-                    <Checkbox
-                      checked={interests.includes(value)}
-                      onChange={() => handleInterestChange(value)}
-                    />
-                  }
-                  label={label}
+            <Grid item xs={12}>
+              <TextField
+                label="Excerpt"
+                value={excerpt}
+                onChange={(e) => setExcerpt(e.target.value)}
+                fullWidth
+                multiline
+                rows={2}
+                variant="outlined"
+                helperText="A brief summary of your post"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom>
+                Content
+              </Typography>
+              <Paper sx={{ p: 2 }}>
+                <MDEditor
+                  value={content}
+                  onChange={setContent}
+                  preview="edit"
+                  height={400}
+                  highlightEnable={true}
+                  enableScroll={true}
                 />
-              ))}
-            </Box>
-          </FormGroup>
+              </Paper>
+            </Grid>
 
-          <TextField
-            label="Excerpt"
-            value={excerpt}
-            onChange={(e) => setExcerpt(e.target.value)}
-            multiline
-            rows={3}
-            required
-            fullWidth
-            inputProps={{ maxLength: 150 }}
-            helperText={`${excerpt.length}/150 characters`}
-          />
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom>
+                Interests
+              </Typography>
+              <FormGroup row>
+                {availableInterests.map((interest) => (
+                  <FormControlLabel
+                    key={interest.value}
+                    control={
+                      <Checkbox
+                        checked={interests.includes(interest.value)}
+                        onChange={() => handleInterestChange(interest.value)}
+                      />
+                    }
+                    label={interest.label}
+                  />
+                ))}
+              </FormGroup>
+            </Grid>
 
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>
-              Content
-            </Typography>
-            <MDEditor
-              value={content}
-              onChange={setContent}
-              preview="edit"
-              height={400}
-            />
-          </Box>
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom>
+                Images
+              </Typography>
+              <ImageUpload images={images} setImages={setImages} />
+            </Grid>
 
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>
-              Images
-            </Typography>
-            <ImageUpload onUpload={handleImageUpload} />
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2, 
-              flexWrap: 'wrap',
-              mt: 2 
-            }}>
-              {images.map((url, index) => (
-                <Box
-                  key={index}
-                  component="img"
-                  src={url}
-                  alt={`Upload ${index + 1}`}
-                  sx={{
-                    width: 200,
-                    height: 150,
-                    objectFit: 'cover',
-                    borderRadius: 1
-                  }}
-                />
-              ))}
-            </Box>
-          </Box>
-
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading}
-            size="large"
-          >
-            {loading ? 'Creating...' : 'Create Post'}
-          </Button>
-        </Box>
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Creating...' : 'Create Post'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate('/')}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </form>
       </Paper>
     </Container>
   )
 }
 
-export default CreatePost 
+export default CreatePost

@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { Button, Snackbar } from '@mui/material'
 
 function ImageUpload({ onUpload }) {
   const [uploading, setUploading] = useState(false)
+  const [showCopySuccess, setShowCopySuccess] = useState(false)
+  const [url, setUrl] = useState('')
 
   async function handleUpload(event) {
     try {
@@ -23,6 +26,7 @@ function ImageUpload({ onUpload }) {
         .from('post-images')
         .getPublicUrl(filePath)
 
+      setUrl(publicUrl)
       onUpload(publicUrl)
     } catch (error) {
       alert('Error uploading image: ' + error.message)
@@ -31,20 +35,49 @@ function ImageUpload({ onUpload }) {
     }
   }
 
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(url)
+    setShowCopySuccess(true)
+  }
+
   return (
     <div className="image-upload">
-      <label className="upload-button">
-        {uploading ? 'Uploading...' : 'Upload Image'}
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleUpload}
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <Button
+          variant="contained"
+          component="label"
           disabled={uploading}
-          style={{ display: 'none' }}
-        />
-      </label>
+          style={{
+            backgroundColor: '#1976d2',
+            color: 'white',
+          }}
+        >
+          {uploading ? 'Uploading...' : 'Upload Image'}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleUpload}
+            hidden
+          />
+        </Button>
+        {url && (
+          <Button
+            variant="outlined"
+            onClick={handleCopyUrl}
+            size="small"
+          >
+            Click to Copy URL
+          </Button>
+        )}
+      </div>
+      <Snackbar
+        open={showCopySuccess}
+        autoHideDuration={2000}
+        onClose={() => setShowCopySuccess(false)}
+        message="URL copied to clipboard!"
+      />
     </div>
   )
 }
 
-export default ImageUpload 
+export default ImageUpload

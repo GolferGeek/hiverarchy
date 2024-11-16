@@ -1,80 +1,236 @@
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { useColorMode } from './ThemeProvider'
-import { 
-  AppBar, 
-  Toolbar, 
-  Button, 
-  IconButton, 
+import { useInterests } from '../contexts/InterestContext'
+import {
+  AppBar,
   Box,
-  useTheme 
+  Toolbar,
+  IconButton,
+  Typography,
+  Menu,
+  Container,
+  Button,
+  MenuItem,
 } from '@mui/material'
-import { Brightness4, Brightness7 } from '@mui/icons-material'
+import MenuIcon from '@mui/icons-material/Menu'
 
 function Navbar() {
+  const [anchorElNav, setAnchorElNav] = useState(null)
   const { user, signOut } = useAuth()
-  const { toggleColorMode } = useColorMode()
-  const theme = useTheme()
+  const { interests, loading } = useInterests()
 
-  const linkStyle = {
-    textDecoration: 'none',
-    color: theme.palette.mode === 'dark' ? '#fff' : 'inherit'
+  useEffect(() => {
+    console.log('Navbar interests:', interests)
+  }, [interests])
+
+  const handleOpenNavMenu = (event) => {
+    setAnchorElNav(event.currentTarget)
+  }
+
+  const handleCloseNavMenu = () => {
+    setAnchorElNav(null)
+  }
+
+  if (loading) {
+    console.log('Navbar loading...')
+    return null
+  }
+
+  if (!interests || interests.length === 0) {
+    console.log('No interests available')
   }
 
   return (
-    <AppBar position="sticky" color="default">
-      <Toolbar sx={{ justifyContent: 'space-between' }}>
-        <Link to="/" style={linkStyle}>
-          <Button color="inherit" sx={{ fontSize: '1.25rem' }}>
+    <AppBar position="static" sx={{ backgroundColor: 'primary.main' }}>
+      <Container maxWidth="xl">
+        <Toolbar disableGutters>
+          {/* Desktop Logo */}
+          <Typography
+            variant="h6"
+            noWrap
+            component={RouterLink}
+            to="/"
+            sx={{
+              display: { xs: 'none', md: 'flex' },
+              fontWeight: 700,
+              color: 'white',
+              textDecoration: 'none',
+              flexGrow: 0,
+            }}
+          >
             GolferGeek
-          </Button>
-        </Link>
+          </Typography>
 
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <Link to="/coder" style={linkStyle}>
-            <Button color="inherit">Coder</Button>
-          </Link>
-          <Link to="/golfer" style={linkStyle}>
-            <Button color="inherit">Golfer</Button>
-          </Link>
-          <Link to="/mentor" style={linkStyle}>
-            <Button color="inherit">Mentor</Button>
-          </Link>
-          <Link to="/aging" style={linkStyle}>
-            <Button color="inherit">Aging</Button>
-          </Link>
+          {/* Mobile Menu */}
+          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+            <IconButton
+              size="large"
+              aria-label="menu"
+              aria-controls="menu-appbar"
+              aria-haspopup="true"
+              onClick={handleOpenNavMenu}
+              color="inherit"
+            >
+              <MenuIcon />
+            </IconButton>
+            <Menu
+              id="menu-appbar"
+              anchorEl={anchorElNav}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+              }}
+              keepMounted
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+              open={Boolean(anchorElNav)}
+              onClose={handleCloseNavMenu}
+              sx={{
+                display: { xs: 'block', md: 'none' },
+              }}
+            >
+              {interests?.map((interest) => (
+                <MenuItem 
+                  key={interest.id} 
+                  onClick={handleCloseNavMenu}
+                  component={RouterLink}
+                  to={interest.route_path}
+                  sx={{ color: 'text.primary' }}
+                >
+                  <Typography textAlign="center">{interest.title}</Typography>
+                </MenuItem>
+              ))}
+            </Menu>
+          </Box>
 
-          <IconButton onClick={toggleColorMode} color="inherit">
-            {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
+          {/* Mobile Logo */}
+          <Typography
+            variant="h5"
+            noWrap
+            component={RouterLink}
+            to="/"
+            sx={{
+              display: { xs: 'flex', md: 'none' },
+              flexGrow: 1,
+              fontWeight: 700,
+              color: 'white',
+              textDecoration: 'none',
+            }}
+          >
+            GolferGeek
+          </Typography>
 
-          {user ? (
-            <>
-              <Link to="/create" style={linkStyle}>
-                <Button variant="contained" color="primary">
+          {/* Desktop Menu */}
+          <Box sx={{ 
+            flexGrow: 1, 
+            display: { xs: 'none', md: 'flex' },
+            justifyContent: 'center',
+            gap: 2
+          }}>
+            {interests?.map((interest) => (
+              <Button
+                key={interest.id}
+                component={RouterLink}
+                to={interest.route_path}
+                onClick={handleCloseNavMenu}
+                sx={{ 
+                  color: 'white', 
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  }
+                }}
+              >
+                {interest.title}
+              </Button>
+            ))}
+          </Box>
+
+          {/* Auth Buttons */}
+          <Box sx={{ flexGrow: 0, ml: 2 }}>
+            {user ? (
+              <>
+                <Button
+                  component={RouterLink}
+                  to="/manage-interests"
+                  sx={{ 
+                    color: 'white',
+                    mr: 2,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }
+                  }}
+                  variant="outlined"
+                >
+                  Manage Interests
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to="/create"
+                  sx={{ 
+                    color: 'white',
+                    mr: 2,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }
+                  }}
+                  variant="outlined"
+                >
                   Create Post
                 </Button>
-              </Link>
-              <Button 
-                onClick={signOut} 
-                color="inherit"
-                variant="outlined"
-                sx={{ color: theme.palette.mode === 'dark' ? '#fff' : 'inherit' }}
-              >
-                Logout
-              </Button>
-            </>
-          ) : (
-            <Link to="/login" style={linkStyle}>
-              <Button variant="contained" color="primary">
-                Login
-              </Button>
-            </Link>
-          )}
-        </Box>
-      </Toolbar>
+                <Button
+                  onClick={signOut}
+                  sx={{ 
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }
+                  }}
+                  variant="outlined"
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  component={RouterLink}
+                  to="/login"
+                  sx={{ 
+                    color: 'white',
+                    mr: 2,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }
+                  }}
+                  variant="outlined"
+                >
+                  Login
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to="/signup"
+                  sx={{ 
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }
+                  }}
+                  variant="outlined"
+                >
+                  Sign Up
+                </Button>
+              </>
+            )}
+          </Box>
+        </Toolbar>
+      </Container>
     </AppBar>
   )
 }
 
-export default Navbar 
+export default Navbar
