@@ -134,8 +134,7 @@ function Navbar() {
               <Button
                 key={interest.id}
                 component={RouterLink}
-                to={interest.route_path}
-                onClick={handleCloseNavMenu}
+                to={`/${interest.title.toLowerCase()}`}
                 sx={{ 
                   color: 'white', 
                   textTransform: 'none',
@@ -150,21 +149,37 @@ function Navbar() {
             ))}
           </Box>
 
-          {/* Auth Buttons */}
-          <Box sx={{ flexGrow: 0, ml: 2 }}>
+          {/* Right side items */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button
+              component={RouterLink}
+              to="/resume"
+              sx={{ 
+                color: 'white', 
+                textTransform: 'none',
+                fontSize: '1rem',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                }
+              }}
+            >
+              Resume
+            </Button>
+
+            {/* Auth Buttons */}
             {user ? (
               <>
                 <Button
                   component={RouterLink}
                   to="/manage-interests"
                   sx={{ 
-                    color: 'white',
-                    mr: 2,
+                    color: 'white', 
+                    textTransform: 'none',
+                    fontSize: '1rem',
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
-                  variant="outlined"
                 >
                   Manage Interests
                 </Button>
@@ -172,25 +187,26 @@ function Navbar() {
                   component={RouterLink}
                   to="/create"
                   sx={{ 
-                    color: 'white',
-                    mr: 2,
+                    color: 'white', 
+                    textTransform: 'none',
+                    fontSize: '1rem',
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
-                  variant="outlined"
                 >
                   Create Post
                 </Button>
                 <Button
                   onClick={signOut}
                   sx={{ 
-                    color: 'white',
+                    color: 'white', 
+                    textTransform: 'none',
+                    fontSize: '1rem',
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
-                  variant="outlined"
                 >
                   Sign Out
                 </Button>
@@ -201,13 +217,13 @@ function Navbar() {
                   component={RouterLink}
                   to="/login"
                   sx={{ 
-                    color: 'white',
-                    mr: 2,
+                    color: 'white', 
+                    textTransform: 'none',
+                    fontSize: '1rem',
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
-                  variant="outlined"
                 >
                   Login
                 </Button>
@@ -215,12 +231,13 @@ function Navbar() {
                   component={RouterLink}
                   to="/signup"
                   sx={{ 
-                    color: 'white',
+                    color: 'white', 
+                    textTransform: 'none',
+                    fontSize: '1rem',
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     }
                   }}
-                  variant="outlined"
                 >
                   Sign Up
                 </Button>

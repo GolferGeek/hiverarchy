@@ -10,26 +10,22 @@ function PostCard({ post, onDelete }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [images, setImages] = useState([])
+  const [firstImage, setFirstImage] = useState(null)
   const isAuthor = user && user.id === post.user_id
 
-  useEffect(() => {
-    fetchImages()
-  }, [post.id])
-
-  async function fetchImages() {
-    try {
-      const { data, error } = await supabase
-        .from('images')
-        .select('url')
-        .eq('post_id', post.id)
-
-      if (error) throw error
-      setImages(data.map(img => img.url))
-    } catch (error) {
-      console.error('Error fetching images:', error)
-    }
+  const extractFirstImageFromContent = (content) => {
+    if (!content) return null
+    const imageRegex = /!\[.*?\]\((.*?)\)/
+    const match = content.match(imageRegex)
+    return match ? match[1] : null
   }
+
+  useEffect(() => {
+    const contentImage = extractFirstImageFromContent(post.content)
+    if (contentImage) {
+      setFirstImage(contentImage)
+    }
+  }, [post.content])
 
   async function handleDelete() {
     try {
@@ -57,6 +53,22 @@ function PostCard({ post, onDelete }) {
     }
   }
 
+  const getDefaultImage = () => {
+    const category = post.interests?.[0]?.toLowerCase()
+    switch(category) {
+      case 'coder':
+        return '/images/coder.jpg'
+      case 'golfer':
+        return '/images/golfer.jpg'
+      case 'mentor':
+        return '/images/mentor.jpg'
+      case 'aging':
+        return '/images/aging.jpg'
+      default:
+        return '/images/coder.jpg'
+    }
+  }
+
   return (
     <>
       <Paper 
@@ -68,37 +80,18 @@ function PostCard({ post, onDelete }) {
       >
         <Box sx={{ display: 'flex', gap: 3 }}>
           {/* Thumbnail */}
-          {images.length > 0 ? (
-            <Box
-              component="img"
-              src={images[0]}
-              alt={post.title}
-              sx={{
-                width: 150,
-                height: 150,
-                objectFit: 'cover',
-                borderRadius: 1,
-                flexShrink: 0
-              }}
-            />
-          ) : (
-            <Box
-              sx={{
-                width: 150,
-                height: 150,
-                bgcolor: 'grey.200',
-                borderRadius: 1,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Typography variant="body2" color="text.secondary">
-                No Image
-              </Typography>
-            </Box>
-          )}
+          <Box
+            component="img"
+            src={firstImage || getDefaultImage()}
+            alt={post.title}
+            sx={{
+              width: 150,
+              height: 150,
+              objectFit: 'cover',
+              borderRadius: 1,
+              flexShrink: 0
+            }}
+          />
 
           {/* Content */}
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

@@ -6,11 +6,26 @@ import { supabase } from '../lib/supabase'
 import CommentList from '../components/CommentList'
 import ConfirmModal from '../components/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
+import {
+  Container,
+  Typography,
+  Box,
+  Paper,
+  Chip,
+  Button,
+  Grid,
+  CircularProgress,
+  Divider,
+  Alert,
+  Stack
+} from '@mui/material'
+import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
 
 function ViewPost() {
   const { id } = useParams()
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const navigate = useNavigate()
   const { user } = useAuth()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -23,6 +38,7 @@ function ViewPost() {
   async function fetchPost() {
     try {
       setLoading(true)
+      setError(null)
       const { data, error } = await supabase
         .from('posts')
         .select('*')
@@ -33,6 +49,7 @@ function ViewPost() {
       setPost(data)
     } catch (error) {
       console.error('Error fetching post:', error)
+      setError('Failed to load post. Please try again later.')
     } finally {
       setLoading(false)
     }
@@ -46,75 +63,141 @@ function ViewPost() {
         .eq('id', id)
 
       if (error) throw error
-      
-      navigate(`/${post.interests[0]}`)
+
+      // Get the first interest or default to 'coder'
+      const defaultInterest = post?.interests?.[0] || 'coder'
+      navigate(`/${defaultInterest}`)
     } catch (error) {
       console.error('Error deleting post:', error)
-      alert('Error deleting post. Please try again.')
+      setError('Failed to delete post. Please try again.')
+      setShowDeleteModal(false)
     }
   }
 
-  if (loading) return <p>Loading post...</p>
-  if (!post) return <p>Post not found</p>
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true)
+  }
+
+  if (loading) {
+    return (
+      <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Container>
+    )
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Alert severity="error">{error}</Alert>
+      </Container>
+    )
+  }
+
+  if (!post) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Alert severity="info">Post not found</Alert>
+      </Container>
+    )
+  }
 
   return (
-    <>
-      <div className="view-post">
-        <h1>{post.title}</h1>
-        <p className="post-meta">
-          {format(new Date(post.created_at), 'MMMM d, yyyy')}
-        </p>
-        <div className="post-interests">
-          {post.interests.map(interest => (
-            <span key={interest} className="interest-tag">
-              {interest}
-            </span>
-          ))}
-        </div>
-        {post.images && post.images.length > 0 && (
-          <div className="post-images">
-            {post.images.map((url, index) => (
-              <img
-                key={index}
-                src={url}
-                alt={`Post image ${index + 1}`}
-                className="post-image"
-              />
-            ))}
-          </div>
-        )}
-        <div className="post-content">
-          <MDEditor.Markdown source={post.content} />
-        </div>
-        <div className="post-actions">
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        {/* Post Header */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h3" component="h1" gutterBottom>
+            {post.title}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              {format(new Date(post.created_at), 'MMMM d, yyyy')}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              {post.interests.map(interest => (
+                <Chip
+                  key={interest}
+                  label={interest}
+                  color="primary"
+                  variant="outlined"
+                  component={Link}
+                  to={`/${interest.toLowerCase()}`}
+                  clickable
+                />
+              ))}
+            </Stack>
+          </Box>
+          
           {isAuthor && (
-            <>
-              <Link to={`/edit/${post.id}`} className="edit-btn">
+            <Box sx={{ mt: 2 }}>
+              <Button
+                startIcon={<EditIcon />}
+                variant="outlined"
+                component={Link}
+                to={`/edit/${post.id}`}
+                sx={{ mr: 2 }}
+              >
                 Edit Post
-              </Link>
-              <button 
-                onClick={() => setShowDeleteModal(true)} 
-                className="delete-btn"
+              </Button>
+              <Button
+                startIcon={<DeleteIcon />}
+                variant="outlined"
+                color="error"
+                onClick={handleDeleteClick}
               >
                 Delete Post
-              </button>
-            </>
+              </Button>
+            </Box>
           )}
-          <Link to={`/${post.interests[0]}`} className="back-btn">
-            Back to {post.interests[0]} posts
-          </Link>
-        </div>
-        <CommentList postId={post.id} />
-      </div>
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        {/* Post Content */}
+        <Box 
+          sx={{ 
+            '& img': {
+              maxWidth: '100%',
+              height: 'auto',
+              maxHeight: '600px',
+              display: 'block',
+              margin: '20px auto'
+            }
+          }}
+          data-color-mode="light"
+        >
+          <MDEditor.Markdown 
+            source={post.content} 
+            style={{ 
+              whiteSpace: 'pre-wrap',
+              background: 'transparent',
+              fontSize: '1.1rem',
+              lineHeight: 1.6
+            }}
+          />
+        </Box>
+
+        <Divider sx={{ my: 4 }} />
+
+        {/* Comments Section */}
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Comments
+          </Typography>
+          <CommentList postId={post.id} />
+        </Box>
+      </Paper>
 
       <ConfirmModal
-        isOpen={showDeleteModal}
-        message="Are you sure you want to delete this post? This action cannot be undone."
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
-        onCancel={() => setShowDeleteModal(false)}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
       />
-    </>
+    </Container>
   )
 }
 
-export default ViewPost 
+export default ViewPost

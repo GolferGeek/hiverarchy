@@ -2,12 +2,25 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Comment from './Comment'
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  CircularProgress,
+  Alert,
+  Paper,
+  Divider
+} from '@mui/material'
+import { Send as SendIcon } from '@mui/icons-material'
 
 function CommentList({ postId }) {
   const { user } = useAuth()
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     fetchComments()
@@ -15,18 +28,14 @@ function CommentList({ postId }) {
 
   async function fetchComments() {
     try {
+      setError(null)
       const { data, error } = await supabase
         .from('comments')
         .select('*, profiles(email)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true })
 
-      if (error) {
-        console.error('Detailed error:', error)
-        throw error
-      }
-      
-      console.log('Comments data:', data)
+      if (error) throw error
       
       setComments(data.map(comment => ({
         ...comment,
@@ -34,6 +43,7 @@ function CommentList({ postId }) {
       })))
     } catch (error) {
       console.error('Error fetching comments:', error)
+      setError('Failed to load comments. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -41,14 +51,17 @@ function CommentList({ postId }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!user) return
+    if (!user || !newComment.trim()) return
+
+    setSubmitting(true)
+    setError(null)
 
     try {
       const { error } = await supabase
         .from('comments')
         .insert([
           {
-            content: newComment,
+            content: newComment.trim(),
             post_id: postId,
             user_id: user.id
           }
@@ -57,15 +70,18 @@ function CommentList({ postId }) {
       if (error) throw error
 
       setNewComment('')
-      fetchComments()
+      await fetchComments()
     } catch (error) {
       console.error('Error adding comment:', error)
-      alert('Error adding comment. Please try again.')
+      setError('Failed to add comment. Please try again.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
   async function handleDelete(commentId) {
     try {
+      setError(null)
       const { error } = await supabase
         .from('comments')
         .delete()
@@ -76,33 +92,105 @@ function CommentList({ postId }) {
       setComments(comments.filter(comment => comment.id !== commentId))
     } catch (error) {
       console.error('Error deleting comment:', error)
-      alert('Error deleting comment. Please try again.')
+      setError('Failed to delete comment. Please try again.')
     }
   }
 
-  if (loading) return <p>Loading comments...</p>
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
 
   return (
-    <div className="comments-section">
-      <h2>Comments</h2>
-      
+    <Box sx={{ mt: 4 }}>
+      <Typography variant="h6" gutterBottom>
+        Comments ({comments.length})
+      </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
       {user ? (
-        <form onSubmit={handleSubmit} className="comment-form">
-          <textarea
+        <Paper 
+          component="form" 
+          onSubmit={handleSubmit}
+          elevation={1}
+          sx={{ 
+            p: 3,
+            mb: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            backgroundColor: 'background.paper',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2
+          }}
+        >
+          <TextField
+            multiline
+            rows={3}
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a comment..."
-            required
+            variant="outlined"
+            fullWidth
+            disabled={submitting}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'background.default',
+                '&:hover': {
+                  backgroundColor: 'background.default',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.main',
+                  },
+                },
+                '&.Mui-focused': {
+                  backgroundColor: 'background.default',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.main',
+                    borderWidth: 2,
+                  },
+                },
+              },
+            }}
           />
-          <button type="submit">Add Comment</button>
-        </form>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={submitting || !newComment.trim()}
+              endIcon={<SendIcon />}
+              sx={{
+                px: 3,
+                py: 1,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 500,
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                },
+              }}
+            >
+              {submitting ? 'Posting...' : 'Post Comment'}
+            </Button>
+          </Box>
+        </Paper>
       ) : (
-        <p>Please log in to comment.</p>
+        <Alert severity="info" sx={{ mb: 4 }}>
+          Please log in to comment.
+        </Alert>
       )}
 
-      <div className="comments-list">
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {comments.length > 0 ? (
-          comments.map((comment) => (
+          comments.map(comment => (
             <Comment
               key={comment.id}
               comment={comment}
@@ -110,11 +198,13 @@ function CommentList({ postId }) {
             />
           ))
         ) : (
-          <p>No comments yet.</p>
+          <Typography color="text.secondary" align="center">
+            No comments yet. Be the first to comment!
+          </Typography>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   )
 }
 
-export default CommentList 
+export default CommentList

@@ -15,6 +15,7 @@ import ViewPost from './pages/ViewPost'
 import CreatePost from './pages/CreatePost'
 import EditPost from './pages/EditPost'
 import ManageInterests from './pages/ManageInterests'
+import Resume from './pages/Resume'
 
 function App() {
   return (
@@ -57,6 +58,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/resume" element={<Resume />} />
               </Routes>
             </main>
           </Router>

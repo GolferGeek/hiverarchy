@@ -41,11 +41,62 @@ function ManageInterests() {
     content: ''
   })
 
+  const defaultInterests = [
+    {
+      title: 'Coder',
+      description: 'Exploring the world of programming and software development',
+      image_path: '/images/coder.jpg',
+      route_path: '/coder'
+    },
+    {
+      title: 'Golfer',
+      description: 'Sharing golf experiences, tips, and achievements',
+      image_path: '/images/golfer.jpg',
+      route_path: '/golfer'
+    },
+    {
+      title: 'Mentor',
+      description: 'Guiding and supporting others in their journey',
+      image_path: '/images/mentor.jpg',
+      route_path: '/mentor'
+    },
+    {
+      title: 'Aging',
+      description: 'Insights and reflections on the aging process',
+      image_path: '/images/aging.jpg',
+      route_path: '/aging'
+    }
+  ]
+
   useEffect(() => {
     if (!user) {
       navigate('/')
       return
     }
+    
+    // Update interests with correct image paths
+    const updateInterestPaths = async () => {
+      try {
+        for (const defaultInterest of defaultInterests) {
+          const { error } = await supabase
+            .from('interests')
+            .update({ 
+              image_path: defaultInterest.image_path,
+              description: defaultInterest.description 
+            })
+            .eq('title', defaultInterest.title)
+          
+          if (error) {
+            console.error('Error updating interest:', error)
+          }
+        }
+        console.log('Interest paths updated')
+      } catch (error) {
+        console.error('Error in updateInterestPaths:', error)
+      }
+    }
+    
+    updateInterestPaths()
     fetchInterests()
   }, [user, navigate])
 

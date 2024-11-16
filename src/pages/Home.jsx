@@ -15,6 +15,22 @@ function Home() {
   const navigate = useNavigate()
   const { interests, loading } = useInterests()
 
+  const getImagePath = (interest) => {
+    const title = interest.title.toLowerCase()
+    switch(title) {
+      case 'coder':
+        return '/images/coder.jpg'
+      case 'golfer':
+        return '/images/golfer.jpg'
+      case 'mentor':
+        return '/images/mentor.jpg'
+      case 'aging':
+        return '/images/aging.jpg'
+      default:
+        return '/images/coder.jpg'
+    }
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -63,7 +79,7 @@ function Home() {
               <CardMedia
                 component="img"
                 sx={{ width: '50%' }}
-                image={section.image_path}
+                image={getImagePath(section)}
                 alt={section.title}
               />
               <CardContent 
@@ -99,8 +115,7 @@ function Home() {
                         : section.description || ''} 
                       style={{ 
                         whiteSpace: 'pre-wrap',
-                        backgroundColor: 'transparent',
-                        fontFamily: 'inherit'
+                        background: 'transparent'
                       }}
                     />
                   </Box>

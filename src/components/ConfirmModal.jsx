@@ -1,21 +1,43 @@
-function ConfirmModal({ isOpen, message, onConfirm, onCancel }) {
-  if (!isOpen) return null;
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button
+} from '@mui/material'
+
+function ConfirmModal({ open, onClose, onConfirm, title, content }) {
+  const handleConfirm = () => {
+    onConfirm()
+    onClose()
+  }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <p>{message}</p>
-        <div className="modal-actions">
-          <button onClick={onConfirm} className="confirm-btn">
-            Yes, Delete
-          </button>
-          <button onClick={onCancel} className="cancel-btn">
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    <Dialog
+      open={open}
+      onClose={onClose}
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-description"
+    >
+      <DialogTitle id="confirm-dialog-title">
+        {title}
+      </DialogTitle>
+      <DialogContent>
+        <DialogContentText id="confirm-dialog-description">
+          {content}
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} color="primary">
+          Cancel
+        </Button>
+        <Button onClick={handleConfirm} color="error" variant="contained" autoFocus>
+          Delete
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
 }
 
-export default ConfirmModal; 
+export default ConfirmModal

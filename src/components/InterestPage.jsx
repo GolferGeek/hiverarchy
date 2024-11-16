@@ -56,15 +56,15 @@ function InterestPage({ category, title }) {
   const getHeroImage = () => {
     switch(category) {
       case 'coder':
-        return '/gg-blog/images/coder.jpg'
+        return '/images/coder.jpg'
       case 'golfer':
-        return '/gg-blog/images/golfer.jpg'
+        return '/images/golfer.jpg'
       case 'mentor':
-        return '/gg-blog/images/mentor.jpg'
+        return '/images/mentor.jpg'
       case 'aging':
-        return '/gg-blog/images/aging.jpg'
+        return '/images/aging.jpg'
       default:
-        return '/gg-blog/images/default.jpg'
+        return '/images/coder.jpg'
     }
   }
 
