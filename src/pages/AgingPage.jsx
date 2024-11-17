@@ -1,7 +1,7 @@
 import InterestPage from '../components/InterestPage'
 
 function AgingPage() {
-  return <InterestPage category="aging" title="Aging Posts" />
+  return <InterestPage category="Older" title="Getting Older" />
 }
 
-export default AgingPage 
+export default AgingPage

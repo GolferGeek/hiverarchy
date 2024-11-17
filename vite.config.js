@@ -17,12 +17,25 @@ export default defineConfig({
     assetsDir: 'assets',
     rollupOptions: {
       output: {
-        manualChunks: undefined
+        manualChunks: {
+          'vendor': [
+            'react',
+            'react-dom',
+            'react-router-dom',
+            '@mui/material',
+            '@emotion/react',
+            '@emotion/styled'
+          ],
+          'editor': ['@uiw/react-md-editor'],
+          'supabase': ['@supabase/supabase-js']
+        }
       }
     },
     // Ensure proper MIME types
     manifest: true,
     // Generate source maps for better debugging
-    sourcemap: true
+    sourcemap: true,
+    // Increase the warning limit for chunk sizes
+    chunkSizeWarningLimit: 1000
   }
 })

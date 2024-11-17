@@ -4,18 +4,20 @@ import { InterestProvider } from './contexts/InterestContext'
 import { ThemeProvider } from './components/ThemeProvider'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
-import Home from './pages/Home'
-import Login from './pages/Login'
-import SignUp from './pages/SignUp'
-import CoderPage from './pages/CoderPage'
-import GolferPage from './pages/GolferPage'
-import MentorPage from './pages/MentorPage'
-import AgingPage from './pages/AgingPage'
-import ViewPost from './pages/ViewPost'
-import CreatePost from './pages/CreatePost'
-import EditPost from './pages/EditPost'
-import ManageInterests from './pages/ManageInterests'
-import Resume from './pages/Resume'
+import { lazy, Suspense } from 'react'
+
+const Home = lazy(() => import('./pages/Home'))
+const Login = lazy(() => import('./pages/Login'))
+const SignUp = lazy(() => import('./pages/SignUp'))
+const CoderPage = lazy(() => import('./pages/CoderPage'))
+const GolferPage = lazy(() => import('./pages/GolferPage'))
+const MentorPage = lazy(() => import('./pages/MentorPage'))
+const AgingPage = lazy(() => import('./pages/AgingPage'))
+const ViewPost = lazy(() => import('./pages/ViewPost'))
+const CreatePost = lazy(() => import('./pages/CreatePost'))
+const EditPost = lazy(() => import('./pages/EditPost'))
+const ManageInterests = lazy(() => import('./pages/ManageInterests'))
+const Resume = lazy(() => import('./pages/Resume'))
 
 function App() {
   return (
@@ -25,41 +27,43 @@ function App() {
           <Router>
             <Navbar />
             <main className="container">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/coder" element={<CoderPage />} />
-                <Route path="/golfer" element={<GolferPage />} />
-                <Route path="/mentor" element={<MentorPage />} />
-                <Route path="/aging" element={<AgingPage />} />
-                <Route path="/post/:id" element={<ViewPost />} />
-                <Route
-                  path="/create"
-                  element={
-                    <ProtectedRoute>
-                      <CreatePost />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/edit/:id"
-                  element={
-                    <ProtectedRoute>
-                      <EditPost />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/manage-interests"
-                  element={
-                    <ProtectedRoute>
-                      <ManageInterests />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/resume" element={<Resume />} />
-              </Routes>
+              <Suspense fallback={<div>Loading...</div>}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<SignUp />} />
+                  <Route path="/coder" element={<CoderPage />} />
+                  <Route path="/golfer" element={<GolferPage />} />
+                  <Route path="/mentor" element={<MentorPage />} />
+                  <Route path="/older" element={<AgingPage />} />
+                  <Route path="/post/:id" element={<ViewPost />} />
+                  <Route
+                    path="/create"
+                    element={
+                      <ProtectedRoute>
+                        <CreatePost />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/edit/:id"
+                    element={
+                      <ProtectedRoute>
+                        <EditPost />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/manage-interests"
+                    element={
+                      <ProtectedRoute>
+                        <ManageInterests />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/resume" element={<Resume />} />
+                </Routes>
+              </Suspense>
             </main>
           </Router>
         </ThemeProvider>

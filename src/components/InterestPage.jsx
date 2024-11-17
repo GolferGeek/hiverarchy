@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import MDEditor from '@uiw/react-md-editor'
 import { 
   Container,
   Typography,
@@ -16,12 +17,33 @@ import PostCard from './PostCard'
 
 function InterestPage({ category, title }) {
   const [posts, setPosts] = useState([])
+  const [interestContent, setInterestContent] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    fetchInterestContent()
     fetchPosts()
-  }, [searchTerm, category])
+  }, [category])
+
+  useEffect(() => {
+    fetchPosts()
+  }, [searchTerm])
+
+  async function fetchInterestContent() {
+    try {
+      const { data, error } = await supabase
+        .from('interests')
+        .select('content, title')
+        .eq('title', category)
+        .single()
+      
+      if (error) throw error
+      setInterestContent(data?.content || '')
+    } catch (error) {
+      console.error('Error fetching interest content:', error)
+    }
+  }
 
   async function fetchPosts() {
     try {
@@ -61,25 +83,10 @@ function InterestPage({ category, title }) {
         return '/images/golfer.jpg'
       case 'mentor':
         return '/images/mentor.jpg'
-      case 'aging':
+      case 'older':
         return '/images/aging.jpg'
       default:
         return '/images/coder.jpg'
-    }
-  }
-
-  const getDescription = () => {
-    switch(category) {
-      case 'coder':
-        return 'Exploring the world of programming and software development'
-      case 'golfer':
-        return 'Sharing golf experiences, tips, and achievements'
-      case 'mentor':
-        return 'Guiding and supporting others in their journey'
-      case 'aging':
-        return 'Insights and reflections on the aging process'
-      default:
-        return ''
     }
   }
 
@@ -115,14 +122,18 @@ function InterestPage({ category, title }) {
           <Typography variant="h2" component="h1" gutterBottom>
             {title}
           </Typography>
-          <Typography variant="h5" component="p" sx={{ maxWidth: '800px', mx: 'auto' }}>
-            {getDescription()}
-          </Typography>
         </Box>
       </Box>
 
-      {/* Search Section */}
+      {/* Content Section */}
       <Container maxWidth="lg">
+        {interestContent && (
+          <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
+            <MDEditor.Markdown source={interestContent} />
+          </Paper>
+        )}
+
+        {/* Search Section */}
         <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
           <TextField
             fullWidth
