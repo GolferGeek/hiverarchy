@@ -9,15 +9,12 @@ import { lazy, Suspense } from 'react'
 const Home = lazy(() => import('./pages/Home'))
 const Login = lazy(() => import('./pages/Login'))
 const SignUp = lazy(() => import('./pages/SignUp'))
-const CoderPage = lazy(() => import('./pages/CoderPage'))
-const GolferPage = lazy(() => import('./pages/GolferPage'))
-const MentorPage = lazy(() => import('./pages/MentorPage'))
-const AgingPage = lazy(() => import('./pages/AgingPage'))
 const ViewPost = lazy(() => import('./pages/ViewPost'))
 const CreatePost = lazy(() => import('./pages/CreatePost'))
 const EditPost = lazy(() => import('./pages/EditPost'))
 const ManageInterests = lazy(() => import('./pages/ManageInterests'))
 const Resume = lazy(() => import('./pages/Resume'))
+const InterestPage = lazy(() => import('./components/InterestPage'))
 
 function App() {
   return (
@@ -32,10 +29,7 @@ function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<SignUp />} />
-                  <Route path="/coder" element={<CoderPage />} />
-                  <Route path="/golfer" element={<GolferPage />} />
-                  <Route path="/mentor" element={<MentorPage />} />
-                  <Route path="/older" element={<AgingPage />} />
+                  <Route path="/:interest" element={<InterestPage />} />
                   <Route path="/post/:id" element={<ViewPost />} />
                   <Route
                     path="/create"

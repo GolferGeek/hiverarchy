@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import MDEditor from '@uiw/react-md-editor'
 import { 
@@ -15,33 +16,43 @@ import {
 import { Search as SearchIcon } from '@mui/icons-material'
 import PostCard from './PostCard'
 
-function InterestPage({ category, title }) {
+function InterestPage() {
+  const { interest } = useParams()
+  const navigate = useNavigate()
+  const [interestData, setInterestData] = useState(null)
   const [posts, setPosts] = useState([])
-  const [interestContent, setInterestContent] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchInterestContent()
-    fetchPosts()
-  }, [category])
+    fetchInterestData()
+  }, [interest])
 
   useEffect(() => {
-    fetchPosts()
-  }, [searchTerm])
+    if (interestData) {
+      fetchPosts()
+    }
+  }, [searchTerm, interestData])
 
-  async function fetchInterestContent() {
+  async function fetchInterestData() {
     try {
+      console.log('Fetching interest data for:', interest)
       const { data, error } = await supabase
         .from('interests')
-        .select('content, title')
-        .eq('title', category)
+        .select('*')
+        .eq('name', interest)
         .single()
       
-      if (error) throw error
-      setInterestContent(data?.content || '')
+      if (error) {
+        console.error('Error fetching interest:', error)
+        navigate('/')
+        return
+      }
+      console.log('Found interest data:', data)
+      setInterestData(data)
     } catch (error) {
-      console.error('Error fetching interest content:', error)
+      console.error('Error fetching interest data:', error)
+      navigate('/')
     }
   }
 
@@ -51,11 +62,11 @@ function InterestPage({ category, title }) {
       let query = supabase
         .from('posts')
         .select('*')
-        .contains('interests', [category])
+        .contains('interests', [interestData.name])
         .order('created_at', { ascending: false })
 
       if (searchTerm) {
-        query = query.ilike('title', `%${searchTerm}%`)
+        query = query.ilike('name', `%${searchTerm}%`)
         query = query.limit(10)
       } else {
         query = query.limit(4)
@@ -76,18 +87,18 @@ function InterestPage({ category, title }) {
   }
 
   const getHeroImage = () => {
-    switch(category) {
-      case 'coder':
-        return '/images/coder.jpg'
-      case 'golfer':
-        return '/images/golfer.jpg'
-      case 'mentor':
-        return '/images/mentor.jpg'
-      case 'older':
-        return '/images/aging.jpg'
-      default:
-        return '/images/coder.jpg'
+    if (!interestData?.image_path) {
+      return '/images/coder.jpg' // default image
     }
+    return interestData.image_path
+  }
+
+  if (!interestData) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    )
   }
 
   return (
@@ -104,7 +115,7 @@ function InterestPage({ category, title }) {
           <Box
             component="img"
             src={getHeroImage()}
-            alt={title}
+            alt={interestData.title}
             sx={{
               width: '100%',
               height: '100%',
@@ -120,16 +131,16 @@ function InterestPage({ category, title }) {
           }}
         >
           <Typography variant="h2" component="h1" gutterBottom>
-            {title}
+            {interestData.title}
           </Typography>
         </Box>
       </Box>
 
       {/* Content Section */}
       <Container maxWidth="lg">
-        {interestContent && (
+        {interestData.content && (
           <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
-            <MDEditor.Markdown source={interestContent} />
+            <MDEditor.Markdown source={interestData.content} />
           </Paper>
         )}
 

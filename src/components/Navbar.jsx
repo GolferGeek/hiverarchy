@@ -21,7 +21,9 @@ function Navbar() {
   const { interests, loading } = useInterests()
 
   useEffect(() => {
-    console.log('Navbar interests:', interests)
+    if (interests) {
+      console.log('Raw interests data:', JSON.stringify(interests, null, 2))
+    }
   }, [interests])
 
   const handleOpenNavMenu = (event) => {
@@ -40,6 +42,15 @@ function Navbar() {
   if (!interests || interests.length === 0) {
     console.log('No interests available')
   }
+
+  // Sort interests by sequence
+  const sortedInterests = [...(interests || [])]
+    .sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
+    .map(interest => ({
+      ...interest
+    }))
+
+  console.log('Processed interests:', sortedInterests)
 
   return (
     <AppBar position="static" sx={{ backgroundColor: 'primary.main' }}>
@@ -92,12 +103,12 @@ function Navbar() {
                 display: { xs: 'block', md: 'none' },
               }}
             >
-              {interests?.map((interest) => (
+              {sortedInterests.map((interest) => (
                 <MenuItem 
                   key={interest.id} 
                   onClick={handleCloseNavMenu}
                   component={RouterLink}
-                  to={interest.route_path}
+                  to={`/${interest.name}`}
                   sx={{ color: 'text.primary' }}
                 >
                   <Typography textAlign="center">{interest.title}</Typography>
@@ -130,11 +141,11 @@ function Navbar() {
             justifyContent: 'center',
             gap: 2
           }}>
-            {interests?.map((interest) => (
+            {sortedInterests.map((interest) => (
               <Button
                 key={interest.id}
                 component={RouterLink}
-                to={`/${interest.title.toLowerCase()}`}
+                to={`/${interest.name}`}
                 sx={{ 
                   color: 'white', 
                   textTransform: 'none',
@@ -171,20 +182,6 @@ function Navbar() {
               <>
                 <Button
                   component={RouterLink}
-                  to="/manage-interests"
-                  sx={{ 
-                    color: 'white', 
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
-                  }}
-                >
-                  Manage Interests
-                </Button>
-                <Button
-                  component={RouterLink}
                   to="/create"
                   sx={{ 
                     color: 'white', 
@@ -195,12 +192,26 @@ function Navbar() {
                     }
                   }}
                 >
-                  Create Post
+                  Create
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to="/manage-interests"
+                  sx={{ 
+                    color: 'white', 
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }
+                  }}
+                >
+                  Manage
                 </Button>
                 <Button
                   onClick={signOut}
                   sx={{ 
-                    color: 'white', 
+                    color: 'white',
                     textTransform: 'none',
                     fontSize: '1rem',
                     '&:hover': {
@@ -212,36 +223,20 @@ function Navbar() {
                 </Button>
               </>
             ) : (
-              <>
-                <Button
-                  component={RouterLink}
-                  to="/login"
-                  sx={{ 
-                    color: 'white', 
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
-                  }}
-                >
-                  Login
-                </Button>
-                <Button
-                  component={RouterLink}
-                  to="/signup"
-                  sx={{ 
-                    color: 'white', 
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
-                  }}
-                >
-                  Sign Up
-                </Button>
-              </>
+              <Button
+                component={RouterLink}
+                to="/login"
+                sx={{ 
+                  color: 'white',
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  }
+                }}
+              >
+                Sign In
+              </Button>
             )}
           </Box>
         </Toolbar>
