@@ -22,7 +22,7 @@ function App() {
     <AuthProvider>
       <InterestProvider>
         <ThemeProvider>
-          <Router basename="/gg-blog">
+          <Router>
             <Navbar />
             <main className="container">
               <Routes>
