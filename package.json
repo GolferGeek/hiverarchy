@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "vite build &&gh-pages -d dist",
+    "deploy": "vite build && gh-pages -d dist",
     "predeploy": "npm run build"
   },
   "dependencies": {
@@ -18,18 +18,12 @@
     "@mui/material": "^6.1.7",
     "@supabase/supabase-js": "^2.46.1",
     "@uiw/react-md-editor": "^4.0.4",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "lucide-react": "^0.456.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "react-router-dom": "^6.28.0",
-    "react-syntax-highlighter": "^15.6.1",
-    "shadcn-ui": "^0.9.3",
-    "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7"
+    "react-syntax-highlighter": "^15.6.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
@@ -44,7 +38,6 @@
     "gh-pages": "^6.2.0",
     "globals": "^15.11.0",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.15",
     "vite": "^5.4.10"
   }
 }
