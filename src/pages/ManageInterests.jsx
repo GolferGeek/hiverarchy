@@ -43,33 +43,37 @@ function ManageInterests() {
 
   const defaultInterests = [
     {
+      name: 'coder',
       title: 'Coder',
       description: 'Exploring the world of programming and software development',
       image_path: '/images/coder.jpg',
       route_path: '/coder'
     },
     {
+      name: 'golfer',
       title: 'Golfer',
       description: 'Sharing golf experiences, tips, and achievements',
       image_path: '/images/golfer.jpg',
       route_path: '/golfer'
     },
     {
+      name: 'mentor',
       title: 'Mentor',
       description: 'Guiding and supporting others in their journey',
       image_path: '/images/mentor.jpg',
       route_path: '/mentor'
     },
     {
-      title: 'Aging',
+      name: 'older',
+      title: 'Older',
       description: 'Insights and reflections on the aging process',
-      image_path: '/images/aging.jpg',
-      route_path: '/aging'
+      image_path: '/images/older.jpg',
+      route_path: '/older'
     }
   ]
 
   useEffect(() => {
-    if (!user) {
+    if (!user || user.email !== 'golfergeek@gmail.com') {
       navigate('/')
       return
     }
@@ -81,11 +85,10 @@ function ManageInterests() {
           const { error } = await supabase
             .from('interests')
             .update({ 
-              image_path: defaultInterest.image_path,
-              description: defaultInterest.description 
+              image_path: defaultInterest.image_path
             })
-            .eq('title', defaultInterest.title)
-          
+            .eq('name', defaultInterest.name)
+        
           if (error) {
             console.error('Error updating interest:', error)
           }

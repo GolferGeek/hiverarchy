@@ -28,6 +28,15 @@ function Navbar() {
     setAnchorElNav(null)
   }
 
+  const buttonStyle = {
+    color: 'white',
+    textTransform: 'none',
+    fontSize: '1rem',
+    '&:hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    }
+  }
+
   if (loading) {
     return null
   }
@@ -136,14 +145,7 @@ function Navbar() {
                 key={interest.id}
                 component={RouterLink}
                 to={`/${interest.name}`}
-                sx={{ 
-                  color: 'white', 
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  }
-                }}
+                sx={buttonStyle}
               >
                 {interest.title}
               </Button>
@@ -155,14 +157,7 @@ function Navbar() {
             <Button
               component={RouterLink}
               to="/resume"
-              sx={{ 
-                color: 'white', 
-                textTransform: 'none',
-                fontSize: '1rem',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
+              sx={buttonStyle}
             >
               Resume
             </Button>
@@ -170,44 +165,27 @@ function Navbar() {
             {/* Auth Buttons */}
             {user ? (
               <>
-                <Button
-                  component={RouterLink}
-                  to="/create"
-                  sx={{ 
-                    color: 'white', 
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
-                  }}
-                >
-                  Create
-                </Button>
-                <Button
-                  component={RouterLink}
-                  to="/manage-interests"
-                  sx={{ 
-                    color: 'white', 
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
-                  }}
-                >
-                  Manage
-                </Button>
+                {user.email === 'golfergeek@gmail.com' && (
+                  <>
+                    <Button
+                      component={RouterLink}
+                      to="/create"
+                      sx={buttonStyle}
+                    >
+                      Create Post
+                    </Button>
+                    <Button
+                      component={RouterLink}
+                      to="/manage-interests"
+                      sx={buttonStyle}
+                    >
+                      Manage
+                    </Button>
+                  </>
+                )}
                 <Button
                   onClick={signOut}
-                  sx={{ 
-                    color: 'white',
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
-                  }}
+                  sx={buttonStyle}
                 >
                   Sign Out
                 </Button>
@@ -216,14 +194,7 @@ function Navbar() {
               <Button
                 component={RouterLink}
                 to="/login"
-                sx={{ 
-                  color: 'white',
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  }
-                }}
+                sx={buttonStyle}
               >
                 Sign In
               </Button>

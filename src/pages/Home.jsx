@@ -16,18 +16,10 @@ function Home() {
   const { interests, loading } = useInterests()
 
   const getImagePath = (interest) => {
-    const title = interest.title.toLowerCase()
-    switch(title) {
-      case 'coder':
-        return '/images/coder.jpg'
-      case 'golfer':
-        return '/images/golfer.jpg'
-      case 'mentor':
-        return '/images/mentor.jpg'
-      case 'aging':
-        return '/images/aging.jpg'
-      default:
-        return '/images/coder.jpg'
+    try {
+      return `/images/${interest.name}.jpg`
+    } catch (error) {
+      return '/images/default.jpg'
     }
   }
 
@@ -38,6 +30,10 @@ function Home() {
       </Box>
     )
   }
+
+  // Sort interests by sequence
+  const sortedInterests = [...(interests || [])]
+    .sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
 
   return (
     <Box>
@@ -54,86 +50,88 @@ function Home() {
           <Typography variant="h2" component="h1" gutterBottom>
             Welcome to GolferGeek
           </Typography>
-          <Typography variant="h5">
-            Exploring the intersections of technology, golf, mentorship, and life's journey
+          <Typography variant="h5" component="h2" gutterBottom>
+            Exploring the intersections of code, golf, mentorship, and life
           </Typography>
         </Container>
       </Box>
 
-      {/* Content Sections */}
+      {/* Interests Column */}
       <Container sx={{ py: 8 }} maxWidth="lg">
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {interests.map((section, index) => (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {sortedInterests.map((interest, index) => (
             <Card 
-              key={section.id}
+              key={interest.id}
               sx={{ 
                 display: 'flex',
-                flexDirection: index % 2 === 0 ? 'row' : 'row-reverse',
+                flexDirection: { xs: 'column', md: index % 2 === 0 ? 'row' : 'row-reverse' },
                 overflow: 'hidden',
+                cursor: 'pointer',
                 transition: 'transform 0.3s ease-in-out',
                 '&:hover': {
                   transform: 'scale(1.02)'
                 }
               }}
+              onClick={() => navigate(`/${interest.name}`)}
             >
               <CardMedia
                 component="img"
-                sx={{ width: '50%' }}
-                image={getImagePath(section)}
-                alt={section.title}
+                sx={{ 
+                  width: { xs: '100%', md: '50%' },
+                  height: { xs: '200px', md: '400px' },
+                  objectFit: 'cover'
+                }}
+                image={getImagePath(interest)}
+                alt={interest.name}
+                onError={(e) => {
+                  e.target.src = '/images/default.jpg'
+                }}
               />
               <CardContent 
                 sx={{ 
-                  width: '50%',
+                  width: { xs: '100%', md: '50%' },
                   display: 'flex',
                   flexDirection: 'column',
                   p: 4,
-                  height: '500px',
-                  position: 'relative'
+                  height: { xs: 'auto', md: '400px' }
                 }}
               >
-                <Box sx={{ mb: 4 }}>
-                  <Typography 
-                    variant="h4" 
-                    component="h2" 
-                    gutterBottom
-                    sx={{ mb: 3 }}
-                  >
-                    {section.title}
-                  </Typography>
-                </Box>
-                
+                <Typography 
+                  variant="h4" 
+                  component="h2" 
+                  gutterBottom
+                  sx={{ mb: 3 }}
+                >
+                  {interest.title}
+                </Typography>
                 <Box sx={{ 
                   flex: 1,
                   overflow: 'auto',
-                  mb: 5
+                  mb: 2
                 }}>
-                  <Box data-color-mode="light">
-                    <MDEditor.Markdown 
-                      source={typeof section.description === 'object'
-                        ? JSON.stringify(section.description, null, 2)
-                        : section.description || ''} 
-                      style={{ 
-                        whiteSpace: 'pre-wrap',
-                        background: 'transparent'
-                      }}
-                    />
-                  </Box>
+                  <MDEditor.Markdown 
+                    source={interest.description} 
+                    style={{ 
+                      whiteSpace: 'pre-wrap',
+                      backgroundColor: 'transparent',
+                      color: 'inherit'
+                    }}
+                  />
                 </Box>
-
-                <Box sx={{ 
-                  position: 'absolute',
-                  bottom: 32,
-                  left: 32
-                }}>
-                  <Button
-                    onClick={() => navigate(section.route_path)}
-                    variant="contained"
-                    size="large"
-                  >
-                    Explore {section.title}
-                  </Button>
-                </Box>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent card click
+                    navigate(`/${interest.name}`);
+                  }}
+                  sx={{
+                    alignSelf: 'flex-start',
+                    textTransform: 'none'
+                  }}
+                >
+                  View Posts
+                </Button>
               </CardContent>
             </Card>
           ))}
