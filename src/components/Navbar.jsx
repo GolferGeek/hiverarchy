@@ -20,12 +20,6 @@ function Navbar() {
   const { user, signOut } = useAuth()
   const { interests, loading } = useInterests()
 
-  useEffect(() => {
-    if (interests) {
-      console.log('Raw interests data:', JSON.stringify(interests, null, 2))
-    }
-  }, [interests])
-
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget)
   }
@@ -35,12 +29,10 @@ function Navbar() {
   }
 
   if (loading) {
-    console.log('Navbar loading...')
     return null
   }
 
   if (!interests || interests.length === 0) {
-    console.log('No interests available')
   }
 
   // Sort interests by sequence
@@ -49,8 +41,6 @@ function Navbar() {
     .map(interest => ({
       ...interest
     }))
-
-  console.log('Processed interests:', sortedInterests)
 
   return (
     <AppBar position="static" sx={{ backgroundColor: 'primary.main' }}>

@@ -17,21 +17,17 @@ export function InterestProvider({ children }) {
 
   async function fetchInterests() {
     try {
-      console.log('Fetching interests...')
       const { data, error } = await supabase
         .from('interests')
         .select('*')
         .order('title')
 
       if (error) {
-        console.error('Supabase error:', error)
         throw error
       }
-      console.log('Fetched interests:', data)
       setInterests(data || [])
       setLoading(false)
     } catch (error) {
-      console.error('Error fetching interests:', error)
       setLoading(false)
     }
   }

@@ -36,7 +36,6 @@ function InterestPage() {
 
   async function fetchInterestData() {
     try {
-      console.log('Fetching interest data for:', interest)
       const { data, error } = await supabase
         .from('interests')
         .select('*')
@@ -44,14 +43,11 @@ function InterestPage() {
         .single()
       
       if (error) {
-        console.error('Error fetching interest:', error)
         navigate('/')
         return
       }
-      console.log('Found interest data:', data)
       setInterestData(data)
     } catch (error) {
-      console.error('Error fetching interest data:', error)
       navigate('/')
     }
   }
@@ -76,7 +72,7 @@ function InterestPage() {
       if (error) throw error
       setPosts(data)
     } catch (error) {
-      console.error('Error fetching posts:', error)
+      setLoading(false)
     } finally {
       setLoading(false)
     }
