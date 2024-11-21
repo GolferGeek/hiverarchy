@@ -103,7 +103,7 @@ function PostCard({ post, onDelete }) {
                 to={`/post/${post.id}`}
                 sx={{ 
                   textDecoration: 'none',
-                  color: 'text.primary',
+                  color: 'inherit',
                   '&:hover': {
                     color: 'primary.main',
                   }
@@ -130,20 +130,42 @@ function PostCard({ post, onDelete }) {
               </Box>
             </Box>
 
+            {/* Tags */}
+            {post.tags && post.tags.length > 0 && (
+              <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                {post.tags.map((tag, index) => (
+                  <Chip
+                    key={index}
+                    label={tag}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ 
+                      borderRadius: '4px',
+                      '&:hover': {
+                        backgroundColor: 'primary.light',
+                        color: 'white'
+                      }
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
+
             {/* Excerpt */}
             <Typography 
               variant="body2" 
               color="text.secondary"
               sx={{ 
                 mb: 2,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis'
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
               }}
             >
-              {post.excerpt}
+              {post.excerpt || 'No excerpt available'}
             </Typography>
 
             {/* Actions */}

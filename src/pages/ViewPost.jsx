@@ -41,12 +41,32 @@ function ViewPost() {
       setError(null)
       const { data, error } = await supabase
         .from('posts')
-        .select('*')
+        .select(`
+          *,
+          tags
+        `)
         .eq('id', id)
         .single()
 
       if (error) throw error
-      setPost(data)
+      
+      // Parse tags JSON string and ensure it's an array
+      let parsedTags = [];
+      try {
+        if (data.tags) {
+          const parsed = JSON.parse(data.tags);
+          parsedTags = Array.isArray(parsed) ? parsed : [];
+        }
+      } catch (parseError) {
+        console.error('Error parsing tags:', parseError);
+      }
+      
+      const postWithParsedTags = {
+        ...data,
+        tags: parsedTags
+      }
+      
+      setPost(postWithParsedTags)
     } catch (error) {
       console.error('Error fetching post:', error)
       setError('Failed to load post. Please try again later.')
@@ -103,50 +123,90 @@ function ViewPost() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         {/* Post Header */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h3" component="h1" gutterBottom>
             {post.title}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              {format(new Date(post.created_at), 'MMMM d, yyyy')}
+
+          {/* Meta Information */}
+          <Box sx={{ mb: 3, color: 'text.secondary' }}>
+            <Typography variant="body2">
+              Posted on {format(new Date(post.created_at), 'MMMM d, yyyy')}
             </Typography>
-            <Stack direction="row" spacing={1}>
-              {post.interests.map(interest => (
-                <Chip
-                  key={interest}
-                  label={interest}
-                  color="primary"
-                  variant="outlined"
-                  component={Link}
-                  to={`/${interest.toLowerCase()}`}
-                  clickable
-                />
-              ))}
-            </Stack>
           </Box>
-          
+
+          {/* Categories and Tags */}
+          <Stack direction="row" spacing={4} sx={{ mb: 3 }}>
+            {/* Interests */}
+            {Array.isArray(post.interests) && post.interests.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Categories
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                  {post.interests.map((interest, index) => (
+                    <Chip
+                      key={index}
+                      label={interest}
+                      color="secondary"
+                      sx={{ 
+                        borderRadius: '4px',
+                        fontWeight: 500
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Tags */}
+            {Array.isArray(post.tags) && post.tags.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Tags
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                  {post.tags.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={tag}
+                      color="primary"
+                      variant="outlined"
+                      sx={{ 
+                        borderRadius: '4px',
+                        '&:hover': {
+                          backgroundColor: 'primary.light',
+                          color: 'white'
+                        }
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+          </Stack>
+
+          {/* Edit/Delete Buttons */}
           {isAuthor && (
-            <Box sx={{ mt: 2 }}>
+            <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
               <Button
-                startIcon={<EditIcon />}
                 variant="outlined"
+                startIcon={<EditIcon />}
                 component={Link}
                 to={`/edit/${post.id}`}
-                sx={{ mr: 2 }}
               >
-                Edit Post
+                Edit
               </Button>
               <Button
-                startIcon={<DeleteIcon />}
                 variant="outlined"
                 color="error"
+                startIcon={<DeleteIcon />}
                 onClick={handleDeleteClick}
               >
-                Delete Post
+                Delete
               </Button>
             </Box>
           )}
@@ -159,23 +219,11 @@ function ViewPost() {
           sx={{ 
             '& img': {
               maxWidth: '100%',
-              height: 'auto',
-              maxHeight: '600px',
-              display: 'block',
-              margin: '20px auto'
+              height: 'auto'
             }
           }}
-          data-color-mode="light"
         >
-          <MDEditor.Markdown 
-            source={post.content} 
-            style={{ 
-              whiteSpace: 'pre-wrap',
-              background: 'transparent',
-              fontSize: '1.1rem',
-              lineHeight: 1.6
-            }}
-          />
+          <MDEditor.Markdown source={post.content} />
         </Box>
 
         <Divider sx={{ my: 4 }} />
@@ -194,7 +242,7 @@ function ViewPost() {
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
         title="Delete Post"
-        message="Are you sure you want to delete this post? This action cannot be undone."
+        content="Are you sure you want to delete this post? This action cannot be undone."
       />
     </Container>
   )

@@ -173,7 +173,8 @@ function ManageInterests() {
     try {
       const submissionData = {
         ...formData,
-        description: formData.description
+        description: formData.description,
+        user_id: user?.id || null // Add user_id to submission
       }
 
       if (editingInterest) {

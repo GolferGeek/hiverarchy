@@ -21,10 +21,11 @@ import {
   CircularProgress
 } from '@mui/material'
 
-function EditPost() {
+export default function EditPost() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const defaultUserId = import.meta.env.VITE_DEFAULT_USER
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [excerpt, setExcerpt] = useState('')
@@ -83,10 +84,10 @@ function EditPost() {
       const { data, error } = await supabase
         .from('tags')
         .select('name')
+        .or(`user_id.eq.${defaultUserId},user_id.eq.${user?.id}`)
         .order('name')
 
       if (error) throw error
-
       setTagSuggestions(data.map(tag => tag.name))
     } catch (error) {
       console.error('Error fetching tags:', error)
@@ -99,30 +100,28 @@ function EditPost() {
     setTagInput(e.target.value)
   }
 
-  const handleTagInputKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault()
-      addTag()
-    }
-  }
+  const handleAddTag = async (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      const trimmedInput = event.target.value.trim().toLowerCase()
+      
+      if (trimmedInput && !tags.includes(trimmedInput)) {
+        try {
+          // First, add to tags table if it doesn't exist
+          const { error } = await supabase
+            .from('tags')
+            .insert([{ 
+              name: trimmedInput,
+              user_id: user?.id || defaultUserId 
+            }])
 
-  const addTag = async () => {
-    const trimmedInput = tagInput.trim()
-    if (trimmedInput && !tags.includes(trimmedInput)) {
-      try {
-        const { error: tagError } = await supabase
-          .from('tags')
-          .upsert({ name: trimmedInput }, { onConflict: 'name' })
-
-        if (tagError) throw tagError
-
-        setTags([...tags, trimmedInput])
-        setTagInput('')
-        
-        await fetchAllTags()
-      } catch (error) {
-        console.error('Error adding tag:', error)
-        setError('Failed to add tag')
+          if (error) throw error
+          setTags([...tags, trimmedInput])
+          event.target.value = ''
+          await fetchAllTags()
+        } catch (error) {
+          console.error('Error adding tag:', error)
+        }
       }
     }
   }
@@ -289,9 +288,9 @@ function EditPost() {
                 label="New Tag"
                 value={tagInput}
                 onChange={handleTagInputChange}
-                onKeyDown={handleTagInputKeyDown}
+                onKeyDown={handleAddTag}
                 placeholder="Type a new tag and press Enter"
-                helperText="Press Enter or comma to add a new tag"
+                helperText="Press Enter to add a new tag"
                 size="small"
                 margin="normal"
               />
@@ -352,5 +351,3 @@ function EditPost() {
     </Container>
   )
 }
-
-export default EditPost

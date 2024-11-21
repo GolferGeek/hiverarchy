@@ -23,6 +23,7 @@ import {
 function CreatePost() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const defaultUserId = import.meta.env.VITE_DEFAULT_USER
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [excerpt, setExcerpt] = useState('')
@@ -52,6 +53,7 @@ function CreatePost() {
       const { data, error } = await supabase
         .from('tags')
         .select('name')
+        .or(`user_id.eq.${defaultUserId},user_id.eq.${user?.id}`)
         .order('name')
 
       if (error) throw error
@@ -79,31 +81,31 @@ function CreatePost() {
   }
 
   const handleTagInputKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
+    if (e.key === 'Enter') {
       e.preventDefault()
-      addTag()
+      handleAddTag(e)
     }
   }
 
-  const addTag = async () => {
-    const trimmedInput = tagInput.trim()
+  const handleAddTag = async (event) => {
+    const trimmedInput = event.target.value.trim().toLowerCase()
+    
     if (trimmedInput && !tags.includes(trimmedInput)) {
       try {
         // First, add to tags table if it doesn't exist
-        const { error: tagError } = await supabase
+        const { error } = await supabase
           .from('tags')
-          .upsert({ name: trimmedInput }, { onConflict: 'name' })
+          .insert([{ 
+            name: trimmedInput,
+            user_id: user?.id || defaultUserId 
+          }])
 
-        if (tagError) throw tagError
-
+        if (error) throw error
         setTags([...tags, trimmedInput])
-        setTagInput('')
-        
-        // Refresh tag suggestions
+        event.target.value = ''
         await fetchAllTags()
       } catch (error) {
         console.error('Error adding tag:', error)
-        setError('Failed to add tag')
       }
     }
   }
@@ -323,7 +325,7 @@ function CreatePost() {
                 onChange={handleTagInputChange}
                 onKeyDown={handleTagInputKeyDown}
                 placeholder="Type a new tag and press Enter"
-                helperText="Press Enter or comma to add a new tag"
+                helperText="Press Enter to add a new tag"
                 size="small"
                 margin="normal"
               />

@@ -15,10 +15,13 @@ import {
 } from '@mui/material'
 import { Search as SearchIcon } from '@mui/icons-material'
 import PostCard from './PostCard'
+import { useAuth } from '../contexts/AuthContext'
 
 function InterestPage() {
   const { interest } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const defaultUserId = import.meta.env.VITE_DEFAULT_USER
   const [interestData, setInterestData] = useState(null)
   const [posts, setPosts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -26,7 +29,7 @@ function InterestPage() {
 
   useEffect(() => {
     fetchInterestData()
-  }, [interest])
+  }, [interest, user])
 
   useEffect(() => {
     if (interestData) {
@@ -36,18 +39,37 @@ function InterestPage() {
 
   async function fetchInterestData() {
     try {
+      // Try to get user-specific interest first if logged in
+      if (user) {
+        const { data, error } = await supabase
+          .from('interests')
+          .select('*')
+          .eq('name', interest)
+          .eq('user_id', user.id)
+          .single()
+        
+        if (!error && data) {
+          setInterestData(data)
+          return
+        }
+      }
+
+      // If no user or no user-specific interest, get default user's interest
       const { data, error } = await supabase
         .from('interests')
         .select('*')
         .eq('name', interest)
+        .eq('user_id', defaultUserId)
         .single()
       
       if (error) {
+        console.error('Error fetching interest:', error)
         navigate('/')
         return
       }
       setInterestData(data)
     } catch (error) {
+      console.error('Error in fetchInterestData:', error)
       navigate('/')
     }
   }
@@ -57,7 +79,10 @@ function InterestPage() {
       setLoading(true)
       let query = supabase
         .from('posts')
-        .select('*')
+        .select(`
+          *,
+          tags
+        `)
         .contains('interests', [interestData.name])
         .order('created_at', { ascending: false })
 
@@ -70,8 +95,16 @@ function InterestPage() {
 
       const { data, error } = await query
       if (error) throw error
-      setPosts(data)
+      
+      // Parse tags JSON string for each post
+      const postsWithParsedTags = data.map(post => ({
+        ...post,
+        tags: post.tags ? JSON.parse(post.tags) : []
+      }))
+      
+      setPosts(postsWithParsedTags)
     } catch (error) {
+      console.error('Error fetching posts:', error)
       setLoading(false)
     } finally {
       setLoading(false)
