@@ -15,6 +15,7 @@ const EditPost = lazy(() => import('./pages/EditPost'))
 const ManageInterests = lazy(() => import('./pages/ManageInterests'))
 const Resume = lazy(() => import('./pages/Resume'))
 const InterestPage = lazy(() => import('./components/InterestPage'))
+const UserProfile = lazy(() => import('./pages/UserProfile'))
 
 function App() {
   return (
@@ -52,6 +53,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <ManageInterests />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <UserProfile />
                       </ProtectedRoute>
                     }
                   />

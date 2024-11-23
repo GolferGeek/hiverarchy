@@ -67,10 +67,24 @@ function Navbar() {
               color: 'white',
               textDecoration: 'none',
               flexGrow: 0,
+              mr: 2,
             }}
           >
             GolferGeek
           </Typography>
+
+          {user && (
+            <Button
+              component={RouterLink}
+              to="/profile"
+              sx={{
+                ...buttonStyle,
+                display: { xs: 'none', md: 'flex' },
+              }}
+            >
+              Profile
+            </Button>
+          )}
 
           {/* Mobile Menu */}
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
@@ -128,11 +142,25 @@ function Navbar() {
               fontWeight: 700,
               color: 'white',
               textDecoration: 'none',
+              mr: 2,
             }}
           >
             GolferGeek
           </Typography>
 
+          {user && (
+            <Button
+              component={RouterLink}
+              to="/profile"
+              sx={{
+                ...buttonStyle,
+                display: { xs: 'flex', md: 'none' },
+                mr: 2,
+              }}
+            >
+              Profile
+            </Button>
+          )}
           {/* Desktop Menu */}
           <Box sx={{ 
             flexGrow: 1, 
