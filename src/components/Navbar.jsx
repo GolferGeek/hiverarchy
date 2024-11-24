@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useInterests } from '../contexts/InterestContext'
+import { useProfile } from '../contexts/ProfileContext'
 import {
   AppBar,
   Box,
@@ -19,6 +20,7 @@ function Navbar() {
   const [anchorElNav, setAnchorElNav] = useState(null)
   const { user, signOut } = useAuth()
   const { interests, loading } = useInterests()
+  const { profile } = useProfile()
 
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget)
@@ -127,6 +129,16 @@ function Navbar() {
                   <Typography textAlign="center">{interest.title}</Typography>
                 </MenuItem>
               ))}
+              {profile?.resume && (
+                <MenuItem 
+                  onClick={handleCloseNavMenu}
+                  component={RouterLink}
+                  to="/resume"
+                  sx={{ color: 'text.primary' }}
+                >
+                  <Typography textAlign="center">Resume</Typography>
+                </MenuItem>
+              )}
             </Menu>
           </Box>
 
@@ -178,19 +190,19 @@ function Navbar() {
                 {interest.title}
               </Button>
             ))}
+            {profile?.resume && (
+              <Button
+                component={RouterLink}
+                to="/resume"
+                sx={buttonStyle}
+              >
+                Resume
+              </Button>
+            )}
           </Box>
 
           {/* Right side items */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button
-              component={RouterLink}
-              to="/resume"
-              sx={buttonStyle}
-            >
-              Resume
-            </Button>
-
-            {/* Auth Buttons */}
             {user ? (
               <>
                 {user.email === 'golfergeek@gmail.com' && (

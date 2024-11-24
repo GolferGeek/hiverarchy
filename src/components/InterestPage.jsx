@@ -11,28 +11,27 @@ import {
   CircularProgress,
   Stack,
   Paper,
-  Button
+  Button,
+  Alert
 } from '@mui/material'
 import { Search as SearchIcon } from '@mui/icons-material'
 import PostCard from './PostCard'
 import { useAuth } from '../contexts/AuthContext'
-import { useSiteProfile } from '../contexts/SiteProfileContext'
 
 function InterestPage() {
   const { interest } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { siteProfile, isOwner } = useSiteProfile()
+  const defaultUserId = import.meta.env.VITE_DEFAULT_USER
   const [interestData, setInterestData] = useState(null)
   const [posts, setPosts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (siteProfile) {
-      fetchInterestData()
-    }
-  }, [interest, siteProfile])
+    fetchInterestData()
+  }, [interest])
 
   useEffect(() => {
     if (interestData) {
@@ -46,14 +45,18 @@ function InterestPage() {
         .from('interests')
         .select('*')
         .eq('name', interest)
-        .eq('user_id', siteProfile.id)
+        .eq('user_id', defaultUserId)
         .single()
 
-      if (error) throw error
+      if (error) {
+        setError('Interest not found')
+        setLoading(false)
+        return
+      }
+      
       setInterestData(data)
     } catch (error) {
-      console.error('Error fetching interest:', error)
-      navigate(`/${siteProfile.username}`)
+      setError('Failed to load interest')
     } finally {
       setLoading(false)
     }
@@ -65,7 +68,7 @@ function InterestPage() {
         .from('posts')
         .select('*')
         .contains('interests', [interestData.name])
-        .eq('user_id', siteProfile.id)
+        .eq('user_id', defaultUserId)
         .order('created_at', { ascending: false })
 
       if (searchTerm) {
@@ -73,20 +76,39 @@ function InterestPage() {
       }
 
       const { data, error } = await query
-      if (error) throw error
+      if (error) {
+        return
+      }
+      
       setPosts(data)
     } catch (error) {
-      console.error('Error fetching posts:', error)
+      // Handle error silently
     }
   }
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 2 }}>
         <CircularProgress />
+        <Typography>Loading interest...</Typography>
       </Box>
     )
   }
+
+  if (error) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={() => navigate('/')}>
+          Return to Home
+        </Button>
+      </Container>
+    )
+  }
+
+  const isOwner = user?.id === defaultUserId
 
   return (
     <Container maxWidth="lg">
@@ -116,10 +138,10 @@ function InterestPage() {
             ),
           }}
         />
-        {isOwner(user) && (
+        {isOwner && (
           <Button
             variant="contained"
-            onClick={() => navigate(`/${siteProfile.username}/create`, { state: { interest: interestData } })}
+            onClick={() => navigate('/create', { state: { interest: interestData } })}
           >
             Create Post
           </Button>
@@ -132,7 +154,7 @@ function InterestPage() {
             key={post.id} 
             post={post}
             showInterest={false}
-            onEdit={isOwner(user) ? () => navigate(`/${siteProfile.username}/edit/${post.id}`) : undefined}
+            onEdit={isOwner ? () => navigate(`/edit/${post.id}`) : undefined}
           />
         ))}
         {posts.length === 0 && (

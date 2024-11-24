@@ -6,7 +6,8 @@ import {
   Card, 
   CardContent, 
   CardMedia, 
-  Button
+  Button,
+  CircularProgress
 } from '@mui/material'
 import { useInterests } from '../contexts/InterestContext'
 import MDEditor from '@uiw/react-md-editor'
@@ -25,8 +26,9 @@ function Home() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Loading...</Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 2 }}>
+        <CircularProgress />
+        <Typography>Loading interests...</Typography>
       </Box>
     )
   }
@@ -58,84 +60,73 @@ function Home() {
 
       {/* Interests Column */}
       <Container sx={{ py: 8 }} maxWidth="lg">
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {sortedInterests.map((interest, index) => (
-            <Card 
-              key={interest.id}
-              sx={{ 
-                display: 'flex',
-                flexDirection: { xs: 'column', md: index % 2 === 0 ? 'row' : 'row-reverse' },
-                overflow: 'hidden',
-                cursor: 'pointer',
-                transition: 'transform 0.3s ease-in-out',
-                '&:hover': {
-                  transform: 'scale(1.02)'
-                }
-              }}
-              onClick={() => navigate(`/${interest.name}`)}
-            >
-              <CardMedia
-                component="img"
+        {sortedInterests.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              No interests found
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Check back later for updates!
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {sortedInterests.map((interest, index) => (
+              <Card 
+                key={interest.id}
                 sx={{ 
-                  width: { xs: '100%', md: '50%' },
-                  height: { xs: '200px', md: '400px' },
-                  objectFit: 'cover'
+                  display: 'flex',
+                  flexDirection: { xs: 'column', md: index % 2 === 0 ? 'row' : 'row-reverse' },
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'transform 0.3s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.02)'
+                  }
                 }}
-                image={getImagePath(interest)}
-                alt={interest.name}
-                onError={(e) => {
-                  e.target.src = '/images/default.jpg'
-                }}
-              />
-              <CardContent 
-                sx={{ 
-                  width: { xs: '100%', md: '50%' },
+                onClick={() => navigate(`/${interest.name}`)}
+              >
+                <CardMedia
+                  component="img"
+                  sx={{ 
+                    width: { xs: '100%', md: '40%' },
+                    height: { xs: 200, md: 300 },
+                    objectFit: 'cover'
+                  }}
+                  image={getImagePath(interest)}
+                  alt={interest.title}
+                />
+                <CardContent sx={{ 
+                  flex: '1 1 auto',
                   display: 'flex',
                   flexDirection: 'column',
-                  p: 4,
-                  height: { xs: 'auto', md: '400px' }
-                }}
-              >
-                <Typography 
-                  variant="h4" 
-                  component="h2" 
-                  gutterBottom
-                  sx={{ mb: 3 }}
-                >
-                  {interest.title}
-                </Typography>
-                <Box sx={{ 
-                  flex: 1,
-                  overflow: 'auto',
-                  mb: 2
+                  justifyContent: 'space-between',
+                  p: 4
                 }}>
-                  <MDEditor.Markdown 
-                    source={interest.description} 
-                    style={{ 
-                      whiteSpace: 'pre-wrap',
-                      backgroundColor: 'transparent',
-                      color: 'inherit'
+                  <Box>
+                    <Typography variant="h4" component="h2" gutterBottom>
+                      {interest.title}
+                    </Typography>
+                    <Box data-color-mode="light" sx={{ mb: 2 }}>
+                      <MDEditor.Markdown source={interest.description || 'No description available.'} />
+                    </Box>
+                  </Box>
+                  <Button 
+                    variant="contained" 
+                    color="primary"
+                    sx={{ alignSelf: 'flex-start' }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/${interest.name}`)
                     }}
-                  />
-                </Box>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent card click
-                    navigate(`/${interest.name}`);
-                  }}
-                  sx={{
-                    alignSelf: 'flex-start',
-                    textTransform: 'none'
-                  }}
-                >
-                  View Posts
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </Box>
+                  >
+                    Learn More
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+        )}
       </Container>
     </Box>
   )

@@ -4,14 +4,16 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import ConfirmModal from './ConfirmModal'
-import { Paper, Typography, Button, Box, Chip, Stack } from '@mui/material'
+import { Paper, Typography, Button, Box, Chip, Stack, Alert } from '@mui/material'
 
-function PostCard({ post, onDelete }) {
+function PostCard({ post, onDelete, showInterest = true }) {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const defaultUserId = import.meta.env.VITE_DEFAULT_USER
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [firstImage, setFirstImage] = useState(null)
-  const isAuthor = user && user.id === post.user_id
+  const [error, setError] = useState(null)
+  const isAuthor = user?.id === defaultUserId
 
   const extractFirstImageFromContent = (content) => {
     if (!content) return null
@@ -29,12 +31,15 @@ function PostCard({ post, onDelete }) {
 
   async function handleDelete() {
     try {
+      setError(null)
       const { error: imageError } = await supabase
         .from('images')
         .delete()
         .eq('post_id', post.id)
 
-      if (imageError) throw imageError
+      if (imageError) {
+        console.error('Error deleting images:', imageError)
+      }
 
       const { error: postError } = await supabase
         .from('posts')
@@ -49,7 +54,7 @@ function PostCard({ post, onDelete }) {
       setShowDeleteModal(false)
     } catch (error) {
       console.error('Error deleting post:', error)
-      alert('Error deleting post. Please try again.')
+      setError('Failed to delete post. Please try again.')
     }
   }
 
@@ -65,7 +70,7 @@ function PostCard({ post, onDelete }) {
       case 'aging':
         return '/images/aging.jpg'
       default:
-        return '/images/coder.jpg'
+        return '/images/default.jpg'
     }
   }
 
@@ -78,6 +83,12 @@ function PostCard({ post, onDelete }) {
           width: '100%',
         }}
       >
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        
         <Box sx={{ display: 'flex', gap: 3 }}>
           {/* Thumbnail */}
           <Box
@@ -90,6 +101,9 @@ function PostCard({ post, onDelete }) {
               objectFit: 'cover',
               borderRadius: 1,
               flexShrink: 0
+            }}
+            onError={(e) => {
+              e.target.src = '/images/default.jpg'
             }}
           />
 
@@ -113,17 +127,22 @@ function PostCard({ post, onDelete }) {
               </Typography>
               
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 0.5 }}>
-                <Stack direction="row" spacing={1}>
-                  {post.interests.map(interest => (
-                    <Chip
-                      key={interest}
-                      label={interest}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                    />
-                  ))}
-                </Stack>
+                {showInterest && post.interests && (
+                  <Stack direction="row" spacing={1}>
+                    {post.interests.map(interest => (
+                      <Chip
+                        key={interest}
+                        label={interest}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        component={Link}
+                        to={`/${interest}`}
+                        clickable
+                      />
+                    ))}
+                  </Stack>
+                )}
                 <Typography variant="body2" color="text.secondary">
                   {format(new Date(post.created_at), 'MMMM d, yyyy')}
                 </Typography>
@@ -138,12 +157,12 @@ function PostCard({ post, onDelete }) {
                     key={index}
                     label={tag}
                     size="small"
-                    color="primary"
+                    color="secondary"
                     variant="outlined"
                     sx={{ 
                       borderRadius: '4px',
                       '&:hover': {
-                        backgroundColor: 'primary.light',
+                        backgroundColor: 'secondary.light',
                         color: 'white'
                       }
                     }}
@@ -217,7 +236,7 @@ function PostCard({ post, onDelete }) {
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
         title="Delete Post"
-        message="Are you sure you want to delete this post? This action cannot be undone."
+        content="Are you sure you want to delete this post? This action cannot be undone."
       />
     </>
   )

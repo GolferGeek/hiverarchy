@@ -23,9 +23,9 @@ import {
   Box,
   Grid,
 } from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import DeleteIcon from '@mui/icons-material/Delete'
-import AddIcon from '@mui/icons-material/Add'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
+import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined'
 
 function ManageInterests() {
   const { user } = useAuth()
@@ -224,7 +224,7 @@ function ManageInterests() {
         <Button
           variant="contained"
           color="primary"
-          startIcon={<AddIcon />}
+          startIcon={<AddCircleOutlineOutlinedIcon />}
           onClick={() => handleOpen()}
         >
           Add Interest
@@ -271,10 +271,10 @@ function ManageInterests() {
                 </TableCell>
                 <TableCell>
                   <IconButton onClick={() => handleOpen(interest)} color="primary">
-                    <EditIcon />
+                    <EditOutlinedIcon />
                   </IconButton>
                   <IconButton onClick={() => handleDelete(interest.id)} color="error">
-                    <DeleteIcon />
+                    <DeleteOutlineOutlinedIcon />
                   </IconButton>
                 </TableCell>
               </TableRow>

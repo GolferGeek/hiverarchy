@@ -1,36 +1,41 @@
-import { Box, Container, Typography } from '@mui/material'
+import { Container, Typography, Paper, Box, CircularProgress } from '@mui/material'
+import { useProfile } from '../contexts/ProfileContext'
 import MDEditor from '@uiw/react-md-editor'
-import { useSiteProfile } from '../contexts/SiteProfileContext'
 
 function Resume() {
-  const { siteProfile, loading } = useSiteProfile()
+  const { profile, loading } = useProfile()
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Loading...</Typography>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <CircularProgress />
       </Box>
     )
   }
 
-  if (!siteProfile?.resume) {
+  if (!profile?.resume) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          Resume not available
+          Resume Not Available
+        </Typography>
+        <Typography>
+          The resume content is currently not available.
         </Typography>
       </Container>
     )
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        {siteProfile.username}'s Resume
-      </Typography>
-      <Box data-color-mode="light">
-        <MDEditor.Markdown source={siteProfile.resume} />
-      </Box>
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Resume
+        </Typography>
+        <Box data-color-mode="light">
+          <MDEditor.Markdown source={profile.resume} />
+        </Box>
+      </Paper>
     </Container>
   )
 }
