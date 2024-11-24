@@ -131,7 +131,7 @@ function PostCard({ post, onDelete }) {
             </Box>
 
             {/* Tags */}
-            {post.tags && post.tags.length > 0 && (
+            {Array.isArray(post.tags) && post.tags.length > 0 && (
               <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 2, flexWrap: 'wrap', gap: 1 }}>
                 {post.tags.map((tag, index) => (
                   <Chip

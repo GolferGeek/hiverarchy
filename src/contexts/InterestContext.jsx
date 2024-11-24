@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
+import { useSiteProfile } from './SiteProfileContext'
 
 const InterestContext = createContext()
 
@@ -12,26 +14,32 @@ export function InterestProvider({ children }) {
   const [interests, setInterests] = useState([])
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
+  const { siteProfile } = useSiteProfile()
   const defaultUserId = import.meta.env.VITE_DEFAULT_USER
 
   useEffect(() => {
-    fetchInterests()
-  }, [user])
+    if (siteProfile) {
+      fetchInterests(siteProfile.id)
+    } else if (defaultUserId) {
+      fetchInterests(defaultUserId)
+    }
+  }, [siteProfile, user])
 
-  async function fetchInterests() {
+  async function fetchInterests(userId = null) {
     try {
+      console.log('Fetching interests for user:', userId)
       let query = supabase
         .from('interests')
         .select('*')
         .order('sequence', { ascending: true })
         .order('title')
 
-      // If user is authenticated, get their interests
-      if (user) {
+      if (userId) {
         const { data: userInterests, error: userError } = await query
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
 
         if (!userError && userInterests?.length > 0) {
+          console.log('Found interests:', userInterests)
           setInterests(userInterests)
           setLoading(false)
           return
@@ -46,6 +54,7 @@ export function InterestProvider({ children }) {
         console.error('Error fetching default interests:', defaultError)
         setInterests([])
       } else {
+        console.log('Using default interests:', defaultInterests)
         setInterests(defaultInterests || [])
       }
       setLoading(false)
