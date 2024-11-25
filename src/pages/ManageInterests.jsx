@@ -37,7 +37,6 @@ function ManageInterests() {
     title: '',
     description: '',
     image_path: '',
-    route_path: '',
     content: ''
   })
 
@@ -126,7 +125,6 @@ function ManageInterests() {
           ? JSON.stringify(interest.description, null, 2)
           : interest.description || '',
         image_path: interest.image_path,
-        route_path: interest.route_path,
         content: interest.content || ''
       })
     } else {
@@ -135,7 +133,6 @@ function ManageInterests() {
         title: '',
         description: '',
         image_path: '',
-        route_path: '',
         content: ''
       })
     }
@@ -149,7 +146,6 @@ function ManageInterests() {
       title: '',
       description: '',
       image_path: '',
-      route_path: '',
       content: ''
     })
   }
@@ -237,7 +233,6 @@ function ManageInterests() {
             <TableRow>
               <TableCell>Title</TableCell>
               <TableCell>Description</TableCell>
-              <TableCell>Route Path</TableCell>
               <TableCell>Content Preview</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -256,7 +251,6 @@ function ManageInterests() {
                       : (interest.description || '').length > 100) ? '...' : ''}
                   </Typography>
                 </TableCell>
-                <TableCell>{interest.route_path}</TableCell>
                 <TableCell>
                   {interest.content ? (
                     <Typography noWrap sx={{ maxWidth: 200 }}>
@@ -303,15 +297,6 @@ function ManageInterests() {
                 name="image_path"
                 label="Image Path"
                 value={formData.image_path}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="route_path"
-                label="Route Path"
-                value={formData.route_path}
                 onChange={handleChange}
                 fullWidth
               />

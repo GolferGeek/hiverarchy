@@ -31,20 +31,33 @@ function Posts() {
   const [postToDelete, setPostToDelete] = useState(null)
   const postsPerPage = 10
 
-  // Redirect if not owner
-  useEffect(() => {
-    if (!user || !siteProfile || !isOwner(user)) {
-      navigate(`/${siteProfile?.username || ''}`)
-    }
-  }, [user, siteProfile])
+  console.log('Component rendered with user details:', {
+    userId: user?.id,
+    userEmail: user?.email,
+    userMetadata: user?.user_metadata,
+    siteProfileId: siteProfile?.id,
+    loading,
+    postsLength: posts.length
+  })
 
   const fetchPosts = async () => {
     try {
+      console.log('Fetching posts for user:', {
+        userId: user?.id,
+        userEmail: user?.email
+      })
       setLoading(true)
+      
+      if (!user?.id) {
+        console.log('No user.id available, aborting fetch')
+        setLoading(false)
+        return
+      }
+
       let query = supabase
         .from('posts')
         .select('*', { count: 'exact' })
-        .eq('user_id', siteProfile.id)
+        .eq('user_id', user.id)
         .order('updated_at', { ascending: false })
 
       if (searchTerm) {
@@ -55,25 +68,41 @@ function Posts() {
       const from = (page - 1) * postsPerPage
       const to = from + postsPerPage - 1
       
+      console.log('Executing query with range:', { from, to })
       const { data, count, error } = await query
         .range(from, to)
 
+      console.log('Query results:', { 
+        dataLength: data?.length,
+        count, 
+        error,
+        firstPost: data?.[0]
+      })
+
       if (error) throw error
 
-      setPosts(data)
+      setPosts(data || [])
       setTotalPages(Math.ceil((count || 0) / postsPerPage))
     } catch (error) {
-      console.error('Error fetching posts:', error)
+      console.error('Error fetching posts:', error.message)
+      setPosts([])
+      setTotalPages(0)
     } finally {
+      console.log('Setting loading to false')
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    if (siteProfile) {
+    console.log('useEffect triggered with:', {
+      userId: user?.id,
+      hasUser: !!user,
+      loading
+    })
+    if (user?.id) {
       fetchPosts()
     }
-  }, [siteProfile, page, searchTerm])
+  }, [user?.id, page, searchTerm])
 
   const handleSearch = (event) => {
     setSearchTerm(event.target.value)

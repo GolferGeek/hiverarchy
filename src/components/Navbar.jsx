@@ -15,9 +15,12 @@ import {
   MenuItem,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import SettingsIcon from '@mui/icons-material/Settings'
 
 function Navbar() {
   const [anchorElNav, setAnchorElNav] = useState(null)
+  const [anchorElManage, setAnchorElManage] = useState(null)
   const { user, signOut } = useAuth()
   const { interests, loading } = useInterests()
   const { profile } = useProfile()
@@ -28,6 +31,14 @@ function Navbar() {
 
   const handleCloseNavMenu = () => {
     setAnchorElNav(null)
+  }
+
+  const handleOpenManageMenu = (event) => {
+    setAnchorElManage(event.currentTarget)
+  }
+
+  const handleCloseManageMenu = () => {
+    setAnchorElManage(null)
   }
 
   const buttonStyle = {
@@ -74,19 +85,6 @@ function Navbar() {
           >
             GolferGeek
           </Typography>
-
-          {user && (
-            <Button
-              component={RouterLink}
-              to="/profile"
-              sx={{
-                ...buttonStyle,
-                display: { xs: 'none', md: 'flex' },
-              }}
-            >
-              Profile
-            </Button>
-          )}
 
           {/* Mobile Menu */}
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
@@ -139,6 +137,40 @@ function Navbar() {
                   <Typography textAlign="center">Resume</Typography>
                 </MenuItem>
               )}
+              {user && (
+                <Box>
+                  {user.email === 'golfergeek@gmail.com' && [
+                    <MenuItem 
+                      key="posts"
+                      onClick={handleCloseNavMenu}
+                      component={RouterLink}
+                      to="/manage/posts"
+                      sx={{ color: 'text.primary' }}
+                    >
+                      <Typography textAlign="center">Posts</Typography>
+                    </MenuItem>,
+                    <MenuItem 
+                      key="interests"
+                      onClick={handleCloseNavMenu}
+                      component={RouterLink}
+                      to="/manageinterests"
+                      sx={{ color: 'text.primary' }}
+                    >
+                      <Typography textAlign="center">Manage Interests</Typography>
+                    </MenuItem>
+                  ]}
+                  <MenuItem 
+                    key="signout"
+                    onClick={() => {
+                      handleCloseNavMenu();
+                      signOut();
+                    }}
+                    sx={{ color: 'text.primary' }}
+                  >
+                    <Typography textAlign="center">Sign Out</Typography>
+                  </MenuItem>
+                </Box>
+              )}
             </Menu>
           </Box>
 
@@ -160,19 +192,6 @@ function Navbar() {
             GolferGeek
           </Typography>
 
-          {user && (
-            <Button
-              component={RouterLink}
-              to="/profile"
-              sx={{
-                ...buttonStyle,
-                display: { xs: 'flex', md: 'none' },
-                mr: 2,
-              }}
-            >
-              Profile
-            </Button>
-          )}
           {/* Desktop Menu */}
           <Box sx={{ 
             flexGrow: 1, 
@@ -207,20 +226,53 @@ function Navbar() {
               <>
                 {user.email === 'golfergeek@gmail.com' && (
                   <>
-                    <Button
-                      component={RouterLink}
-                      to="/create"
-                      sx={buttonStyle}
+                    <IconButton
+                      size="large"
+                      aria-label="manage"
+                      aria-controls="manage-appbar"
+                      aria-haspopup="true"
+                      onClick={handleOpenManageMenu}
+                      color="inherit"
                     >
-                      Create Post
-                    </Button>
-                    <Button
-                      component={RouterLink}
-                      to="/manage-interests"
-                      sx={buttonStyle}
+                      <SettingsIcon sx={{ color: 'white' }} />
+                    </IconButton>
+                    <Menu
+                      id="manage-appbar"
+                      anchorEl={anchorElManage}
+                      keepMounted
+                      open={Boolean(anchorElManage)}
+                      onClose={handleCloseManageMenu}
+                      anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'right',
+                      }}
+                      transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
                     >
-                      Manage
-                    </Button>
+                      <MenuItem
+                        component={RouterLink}
+                        to="/manage/profile"
+                        onClick={handleCloseManageMenu}
+                      >
+                        Profile
+                      </MenuItem>
+                      <MenuItem
+                        component={RouterLink}
+                        to="/manage/posts"
+                        onClick={handleCloseManageMenu}
+                      >
+                        Posts
+                      </MenuItem>
+                      <MenuItem
+                        component={RouterLink}
+                        to="/manage/interests"
+                        onClick={handleCloseManageMenu}
+                      >
+                        Interests
+                      </MenuItem>
+                    </Menu>
                   </>
                 )}
                 <Button

@@ -60,7 +60,7 @@ function App() {
                       }
                     />
                     <Route
-                      path="/manage-interests"
+                      path="/manage/interests"
                       element={
                         <ProtectedRoute>
                           <ManageInterests />
@@ -68,10 +68,18 @@ function App() {
                       }
                     />
                     <Route
-                      path="/profile"
+                      path="/manage/profile"
                       element={
                         <ProtectedRoute>
                           <UserProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/manage/posts"
+                      element={
+                        <ProtectedRoute>
+                          <Posts />
                         </ProtectedRoute>
                       }
                     />
