@@ -143,7 +143,7 @@ function InterestPage() {
             variant="contained"
             onClick={() => navigate('/create', { state: { interest: interestData } })}
           >
-            Create Post
+            Create
           </Button>
         )}
       </Stack>
@@ -155,6 +155,7 @@ function InterestPage() {
             post={post}
             showInterest={false}
             onEdit={isOwner ? () => navigate(`/edit/${post.id}`) : undefined}
+            onDelete={() => fetchPosts()}
           />
         ))}
         {posts.length === 0 && (
