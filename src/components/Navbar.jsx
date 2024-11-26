@@ -68,23 +68,39 @@ function Navbar() {
     <AppBar position="static" sx={{ backgroundColor: 'primary.main' }}>
       <Container maxWidth="xl">
         <Toolbar disableGutters>
-          {/* Desktop Logo */}
-          <Typography
-            variant="h6"
-            noWrap
-            component={RouterLink}
-            to="/"
-            sx={{
-              display: { xs: 'none', md: 'flex' },
-              fontWeight: 700,
-              color: 'white',
-              textDecoration: 'none',
-              flexGrow: 0,
-              mr: 2,
-            }}
-          >
-            GolferGeek
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography
+              variant="h6"
+              noWrap
+              component={RouterLink}
+              to="/"
+              sx={{
+                mr: 2,
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                letterSpacing: '.3rem',
+                color: 'white',
+                textDecoration: 'none',
+              }}
+            >
+              GolferGeek
+            </Typography>
+            {profile?.resume && (
+              <Button
+                component={RouterLink}
+                to="/resume"
+                sx={{
+                  color: 'white',
+                  textDecoration: 'none',
+                  '&:hover': {
+                    color: 'secondary.main',
+                  }
+                }}
+              >
+                Resume
+              </Button>
+            )}
+          </Box>
 
           {/* Mobile Menu */}
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
@@ -174,24 +190,6 @@ function Navbar() {
             </Menu>
           </Box>
 
-          {/* Mobile Logo */}
-          <Typography
-            variant="h5"
-            noWrap
-            component={RouterLink}
-            to="/"
-            sx={{
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              fontWeight: 700,
-              color: 'white',
-              textDecoration: 'none',
-              mr: 2,
-            }}
-          >
-            GolferGeek
-          </Typography>
-
           {/* Desktop Menu */}
           <Box sx={{ 
             flexGrow: 1, 
@@ -209,15 +207,6 @@ function Navbar() {
                 {interest.title}
               </Button>
             ))}
-            {profile?.resume && (
-              <Button
-                component={RouterLink}
-                to="/resume"
-                sx={buttonStyle}
-              >
-                Resume
-              </Button>
-            )}
           </Box>
 
           {/* Right side items */}

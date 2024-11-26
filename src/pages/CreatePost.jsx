@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import MDEditor from '@uiw/react-md-editor'
 import { supabase } from '../lib/supabase'
 import ImageUpload from '../components/ImageUpload'
@@ -22,19 +22,23 @@ import {
 
 function CreatePost() {
   const navigate = useNavigate()
+  const { state } = useLocation()
   const { user } = useAuth()
   const defaultUserId = import.meta.env.VITE_DEFAULT_USER
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [excerpt, setExcerpt] = useState('')
-  const [interests, setInterests] = useState(['coder'])
   const [loading, setLoading] = useState(false)
-  const [images, setImages] = useState([])
-  const [error, setError] = useState('')
-  const [tags, setTags] = useState([])
-  const [tagInput, setTagInput] = useState('')
+  const [error, setError] = useState(null)
   const [tagSuggestions, setTagSuggestions] = useState([])
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [tagInput, setTagInput] = useState('')
+  const [post, setPost] = useState({
+    title: '',
+    content: '',
+    excerpt: '',
+    interests: state?.interest ? [state.interest.name] : ['coder'],
+    tags: [],
+    images: [],
+    parent_id: state?.parentPost?.id || null,
+    arc_id: state?.parentPost ? (state.arcId || state.parentPost.id) : null
+  })
 
   const availableInterests = [
     { value: 'coder', label: 'Coder' },
@@ -49,7 +53,6 @@ function CreatePost() {
 
   async function fetchAllTags() {
     try {
-      setLoadingSuggestions(true)
       const { data, error } = await supabase
         .from('tags')
         .select('name')
@@ -61,17 +64,15 @@ function CreatePost() {
       setTagSuggestions(data.map(tag => tag.name))
     } catch (error) {
       console.error('Error fetching tags:', error)
-    } finally {
-      setLoadingSuggestions(false)
     }
   }
 
   function handleInterestChange(value) {
-    setInterests(prev => {
-      if (prev.includes(value)) {
-        return prev.filter(int => int !== value)
+    setPost(prev => {
+      if (prev.interests.includes(value)) {
+        return { ...prev, interests: prev.interests.filter(int => int !== value) }
       } else {
-        return [...prev, value]
+        return { ...prev, interests: [...prev.interests, value] }
       }
     })
   }
@@ -90,7 +91,7 @@ function CreatePost() {
   const handleAddTag = async (event) => {
     const trimmedInput = event.target.value.trim().toLowerCase()
     
-    if (trimmedInput && !tags.includes(trimmedInput)) {
+    if (trimmedInput && !post.tags.includes(trimmedInput)) {
       try {
         // First, add to tags table if it doesn't exist
         const { error } = await supabase
@@ -101,7 +102,7 @@ function CreatePost() {
           }])
 
         if (error) throw error
-        setTags([...tags, trimmedInput])
+        setPost(prev => ({ ...prev, tags: [...prev.tags, trimmedInput] }))
         event.target.value = ''
         await fetchAllTags()
       } catch (error) {
@@ -111,91 +112,69 @@ function CreatePost() {
   }
 
   const handleTagSelect = (tagName) => {
-    if (!tags.includes(tagName)) {
-      setTags([...tags, tagName])
+    if (!post.tags.includes(tagName)) {
+      setPost(prev => ({ ...prev, tags: [...prev.tags, tagName] }))
     }
     setTagInput('')
   }
 
   const removeTag = (tagToRemove) => {
-    setTags(tags.filter(tag => tag !== tagToRemove))
+    setPost(prev => ({ ...prev, tags: prev.tags.filter(tag => tag !== tagToRemove) }))
   }
 
   const handleImageUpload = (uploadedImages) => {
-    setImages(prev => [...prev, ...uploadedImages])
+    setPost(prev => ({ ...prev, images: [...prev.images, ...uploadedImages] }))
   }
 
   const handleRemoveImage = (imageUrl) => {
-    setImages(prev => prev.filter(img => img !== imageUrl))
+    setPost(prev => ({ ...prev, images: prev.images.filter(img => img !== imageUrl) }))
   }
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    if (interests.length === 0) {
-      setError('Please select at least one interest')
-      return
-    }
-
-    if (!title || !content) {
-      setError('Please fill in all required fields')
-      return
-    }
-
     setLoading(true)
-    setError('')
+    setError(null)
 
     try {
-      // Insert post
-      const { data: post, error: postError } = await supabase
+      // First, insert the post without arc_id to get its ID
+      const { data: newPost, error: insertError } = await supabase
         .from('posts')
-        .insert([
-          {
-            title,
-            content,
-            excerpt,
-            interests,
-            tags: JSON.stringify(tags),
-            images,
-            user_id: user?.id
-          }
-        ])
+        .insert([{
+          ...post,
+          user_id: user.id,
+          arc_id: post.parent_id ? post.arc_id : null // Temporarily null for new posts
+        }])
         .select()
         .single()
 
-      if (postError) throw postError
+      if (insertError) throw insertError
 
-      // Handle image uploads if any
-      if (images.length > 0) {
-        const imagePromises = images.map(async (image) => {
-          const { error: imageError } = await supabase
-            .from('images')
-            .insert([
-              {
-                url: image,
-                post_id: post.id
-              }
-            ])
-          
-          if (imageError) throw imageError
-        })
+      // For top-level posts, update arc_id to be the same as id
+      if (!post.parent_id) {
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ arc_id: newPost.id })
+          .eq('id', newPost.id)
 
-        await Promise.all(imagePromises)
+        if (updateError) throw updateError
       }
 
-      navigate('/post/' + post.id)
+      // Navigate back to the post list or parent post
+      if (post.parent_id) {
+        navigate(`/post/${post.parent_id}`)
+      } else {
+        navigate('/')
+      }
     } catch (error) {
-      console.error('Error creating post:', error)
-      setError('Failed to create post. Please try again.')
+      setError(error.message)
     } finally {
       setLoading(false)
     }
   }
 
-  // Filter suggestions based on input
   const filteredSuggestions = tagSuggestions.filter(tag => 
     tag.toLowerCase().includes(tagInput.toLowerCase()) && 
-    !tags.includes(tag)
+    !post.tags.includes(tag)
   )
 
   return (
@@ -216,8 +195,8 @@ function CreatePost() {
             <Grid item xs={12}>
               <TextField
                 label="Title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                value={post.title}
+                onChange={(e) => setPost(prev => ({ ...prev, title: e.target.value }))}
                 fullWidth
                 required
                 variant="outlined"
@@ -227,8 +206,8 @@ function CreatePost() {
             <Grid item xs={12}>
               <TextField
                 label="Excerpt"
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
+                value={post.excerpt}
+                onChange={(e) => setPost(prev => ({ ...prev, excerpt: e.target.value }))}
                 fullWidth
                 multiline
                 rows={2}
@@ -243,8 +222,8 @@ function CreatePost() {
               </Typography>
               <Paper sx={{ p: 2 }}>
                 <MDEditor
-                  value={content}
-                  onChange={setContent}
+                  value={post.content}
+                  onChange={(value) => setPost(prev => ({ ...prev, content: value }))}
                   preview="edit"
                   height={400}
                   highlightEnable={true}
@@ -263,7 +242,7 @@ function CreatePost() {
                     key={interest.value}
                     control={
                       <Checkbox
-                        checked={interests.includes(interest.value)}
+                        checked={post.interests.includes(interest.value)}
                         onChange={() => handleInterestChange(interest.value)}
                       />
                     }
@@ -284,14 +263,14 @@ function CreatePost() {
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
                   {tagSuggestions
-                    .filter(tag => !tags.includes(tag))
+                    .filter(tag => !post.tags.includes(tag))
                     .map((tag) => (
                       <Chip
                         key={tag}
                         label={tag}
                         onClick={() => handleTagSelect(tag)}
-                        color="default"
                         variant="outlined"
+                        size="small"
                         sx={{ cursor: 'pointer' }}
                       />
                     ))}
@@ -303,7 +282,7 @@ function CreatePost() {
                   Selected Tags
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                  {tags.map((tag, index) => (
+                  {post.tags.map((tag, index) => (
                     <Chip
                       key={index}
                       label={tag}
@@ -327,7 +306,7 @@ function CreatePost() {
                 placeholder="Type a new tag and press Enter"
                 helperText="Press Enter to add a new tag"
                 size="small"
-                margin="normal"
+                sx={{ mt: 2 }}
               />
               {tagInput && filteredSuggestions.length > 0 && (
                 <Paper sx={{ mt: 1, maxHeight: 200, overflow: 'auto' }}>
@@ -359,7 +338,7 @@ function CreatePost() {
               <ImageUpload 
                 onUpload={handleImageUpload}
                 onRemove={handleRemoveImage}
-                existingImages={images}
+                existingImages={post.images}
               />
             </Grid>
 

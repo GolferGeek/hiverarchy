@@ -45,6 +45,7 @@ function Home() {
           bgcolor: 'primary.main',
           color: 'white',
           py: 8,
+          mt: 4,
           textAlign: 'center'
         }}
       >
