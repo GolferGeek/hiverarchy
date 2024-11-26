@@ -230,12 +230,31 @@ export default function EditPost() {
               <Typography variant="h6" gutterBottom>
                 Content
               </Typography>
-              <MDEditor
-                value={content}
-                onChange={setContent}
-                height={400}
-                preview="edit"
-              />
+              <Box sx={{ 
+                '& .w-md-editor': { 
+                  margin: 0,
+                  boxShadow: 'none',
+                  border: '1px solid rgba(0, 0, 0, 0.23)',
+                  borderRadius: 1,
+                  minHeight: '400px'
+                },
+                '& .wmde-markdown': {
+                  padding: 0
+                },
+                '& .w-md-editor-toolbar': {
+                  padding: '8px'
+                },
+                '& .w-md-editor-content': {
+                  height: 'calc(400px - 40px) !important' // Subtracting toolbar height
+                }
+              }}>
+                <MDEditor
+                  value={content}
+                  onChange={setContent}
+                  preview="edit"
+                  highlightEnable={false}
+                />
+              </Box>
             </Grid>
 
             <Grid item xs={12}>

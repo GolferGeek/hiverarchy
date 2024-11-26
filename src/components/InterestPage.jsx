@@ -127,71 +127,64 @@ function InterestPage() {
         >
           {interestData.name}
         </Typography>
+        {interestData.image_path && (
+          <Box
+            component="img"
+            src={interestData.image_path}
+            alt={interestData.name}
+            sx={{
+              maxWidth: '100%',
+              height: 'auto',
+              maxHeight: '400px',
+              borderRadius: 2,
+              boxShadow: 3,
+              mb: 4
+            }}
+          />
+        )}
       </Box>
 
       {/* Content Section */}
       {interestData.content && (
-        <Paper 
-          elevation={2}
-          sx={{ 
-            p: 4, 
-            mb: 6,
-            backgroundColor: 'background.paper',
-            '& img': {
-              maxWidth: '100%',
-              height: 'auto',
-              borderRadius: 1
-            },
-            '& h1, & h2, & h3, & h4, & h5, & h6': {
-              color: 'primary.main',
-              mt: 3,
-              mb: 2
-            },
-            '& p': {
-              mb: 2,
-              lineHeight: 1.7
-            },
-            '& a': {
-              color: 'primary.main',
-              textDecoration: 'none',
-              '&:hover': {
-                textDecoration: 'underline'
-              }
-            },
-            '& ul, & ol': {
-              pl: 3,
-              mb: 2
-            },
-            '& li': {
-              mb: 1
-            },
-            '& blockquote': {
-              borderLeft: 4,
-              borderColor: 'primary.main',
-              pl: 2,
-              ml: 0,
-              my: 2,
-              fontStyle: 'italic'
-            },
-            '& code': {
-              backgroundColor: 'grey.100',
-              p: 0.5,
-              borderRadius: 0.5,
-              fontFamily: 'monospace'
-            },
-            '& pre': {
-              backgroundColor: 'grey.100',
-              p: 2,
-              borderRadius: 1,
-              overflow: 'auto',
-              '& code': {
-                backgroundColor: 'transparent'
-              }
-            }
-          }}
-        >
-          <MDEditor.Markdown source={interestData.content} />
-        </Paper>
+        <Box sx={{ 
+          mt: 2,
+          '& .w-md-editor': { 
+            margin: 0,
+            boxShadow: 'none',
+            border: '1px solid rgba(0, 0, 0, 0.23)',
+            borderRadius: 1,
+            height: '1000px'
+          },
+          '& .wmde-markdown': {
+            padding: '16px'
+          },
+          '& .w-md-editor-toolbar': {
+            padding: '8px',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
+          },
+          '& .w-md-editor-content': {
+            height: 'calc(100% - 40px) !important'
+          },
+          '& .w-md-editor-input': {
+            height: '100% !important'
+          },
+          '& .w-md-editor-text': {
+            height: '100% !important'
+          },
+          '& .w-md-editor-text-input': {
+            padding: '16px !important',
+            height: '100% !important'
+          },
+          '& .w-md-editor-preview': {
+            padding: '16px !important',
+            height: '100% !important'
+          }
+        }}>
+          <MDEditor.Markdown 
+            source={interestData.content}
+            highlightEnable={false}
+          />
+        </Box>
       )}
 
       {/* Actions Section */}

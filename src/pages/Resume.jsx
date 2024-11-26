@@ -33,7 +33,7 @@ function Resume() {
           Resume
         </Typography>
         <Box data-color-mode="light">
-          <MDEditor.Markdown source={profile.resume} />
+          <MDEditor.Markdown source={profile.resume} highlightEnable={false} />
         </Box>
       </Paper>
     </Container>

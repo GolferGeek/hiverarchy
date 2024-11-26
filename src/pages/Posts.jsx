@@ -9,7 +9,8 @@ import {
   Paper,
   IconButton,
   InputAdornment,
-  Pagination
+  Pagination,
+  CircularProgress
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import SearchIcon from '@mui/icons-material/Search'
@@ -21,7 +22,7 @@ import ConfirmModal from '../components/ConfirmModal'
 function Posts() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { siteProfile, isOwner } = useSiteProfile()
+  const { siteProfile, loading: profileLoading } = useSiteProfile()
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -49,7 +50,7 @@ function Posts() {
       setLoading(true)
       
       if (!user?.id) {
-        console.log('No user.id available, aborting fetch')
+        console.log('No user ID available')
         setLoading(false)
         return
       }
@@ -58,37 +59,28 @@ function Posts() {
         .from('posts')
         .select('*', { count: 'exact' })
         .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (searchTerm) {
-        query = query.ilike('title', `%${searchTerm}%`)
+        query = query.or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`)
       }
 
-      // Add pagination
+      // Calculate pagination
       const from = (page - 1) * postsPerPage
       const to = from + postsPerPage - 1
-      
-      console.log('Executing query with range:', { from, to })
-      const { data, count, error } = await query
-        .range(from, to)
 
-      console.log('Query results:', { 
-        dataLength: data?.length,
-        count, 
-        error,
-        firstPost: data?.[0]
-      })
+      query = query.range(from, to)
+
+      const { data, count, error } = await query
 
       if (error) throw error
 
+      console.log('Posts fetched:', data)
       setPosts(data || [])
       setTotalPages(Math.ceil((count || 0) / postsPerPage))
     } catch (error) {
-      console.error('Error fetching posts:', error.message)
-      setPosts([])
-      setTotalPages(0)
+      console.error('Error fetching posts:', error)
     } finally {
-      console.log('Setting loading to false')
       setLoading(false)
     }
   }
@@ -144,10 +136,10 @@ function Posts() {
     }
   }
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Loading...</Typography>
+        <CircularProgress />
       </Box>
     )
   }
@@ -161,7 +153,7 @@ function Posts() {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => navigate(`/${siteProfile.username}/create-post`)}
+          onClick={() => navigate('/create')}
         >
           Create Post
         </Button>
