@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import MDEditor from '@uiw/react-md-editor'
+import MarkdownEditor from '../components/MarkdownEditor'
 import {
   Container,
   Typography,
@@ -277,12 +277,12 @@ function ManageInterests() {
         </Table>
       </TableContainer>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
           {editingInterest ? 'Edit Interest' : 'Add Interest'}
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid container spacing={2}>
             <Grid item xs={12}>
               <TextField
                 name="title"
@@ -290,119 +290,46 @@ function ManageInterests() {
                 value={formData.title}
                 onChange={handleChange}
                 fullWidth
+                margin="normal"
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12}>
+              <TextField
+                name="description"
+                label="Description"
+                value={formData.description}
+                onChange={handleChange}
+                fullWidth
+                multiline
+                rows={3}
+                margin="normal"
+              />
+            </Grid>
+            <Grid item xs={12}>
               <TextField
                 name="image_path"
                 label="Image Path"
                 value={formData.image_path}
                 onChange={handleChange}
                 fullWidth
+                margin="normal"
               />
             </Grid>
             <Grid item xs={12}>
               <Typography variant="subtitle1" gutterBottom>
-                Description (Markdown)
+                Content
               </Typography>
-              <Box sx={{ 
-                '& .w-md-editor': { 
-                  margin: 0,
-                  boxShadow: 'none',
-                  border: '1px solid rgba(0, 0, 0, 0.23)',
-                  borderRadius: 1,
-                  height: '1000px'
-                },
-                '& .wmde-markdown': {
-                  padding: '16px'
-                },
-                '& .w-md-editor-toolbar': {
-                  padding: '8px',
-                  borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
-                },
-                '& .w-md-editor-content': {
-                  height: 'calc(100% - 40px) !important'
-                },
-                '& .w-md-editor-input': {
-                  height: '100% !important'
-                },
-                '& .w-md-editor-text': {
-                  height: '100% !important'
-                },
-                '& .w-md-editor-text-input': {
-                  padding: '16px !important',
-                  height: '100% !important'
-                },
-                '& .w-md-editor-preview': {
-                  padding: '16px !important',
-                  height: '100% !important'
-                }
-              }}>
-                <MDEditor
-                  value={formData.description}
-                  onChange={handleMarkdownChange('description')}
-                  preview="edit"
-                  highlightEnable={false}
-                  textareaProps={{
-                    placeholder: 'Enter description here...'
-                  }}
-                />
-              </Box>
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
-                Content (Markdown)
-              </Typography>
-              <Box sx={{ 
-                '& .w-md-editor': { 
-                  margin: 0,
-                  boxShadow: 'none',
-                  border: '1px solid rgba(0, 0, 0, 0.23)',
-                  borderRadius: 1,
-                  height: '1000px'
-                },
-                '& .wmde-markdown': {
-                  padding: '16px'
-                },
-                '& .w-md-editor-toolbar': {
-                  padding: '8px',
-                  borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
-                },
-                '& .w-md-editor-content': {
-                  height: 'calc(100% - 40px) !important'
-                },
-                '& .w-md-editor-input': {
-                  height: '100% !important'
-                },
-                '& .w-md-editor-text': {
-                  height: '100% !important'
-                },
-                '& .w-md-editor-text-input': {
-                  padding: '16px !important',
-                  height: '100% !important'
-                },
-                '& .w-md-editor-preview': {
-                  padding: '16px !important',
-                  height: '100% !important'
-                }
-              }}>
-                <MDEditor
-                  value={formData.content}
-                  onChange={handleMarkdownChange('content')}
-                  preview="edit"
-                  highlightEnable={false}
-                  textareaProps={{
-                    placeholder: 'Enter content here...'
-                  }}
-                />
-              </Box>
+              <MarkdownEditor
+                value={formData.content}
+                onChange={handleMarkdownChange('content')}
+              />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained" color="primary">
-            {editingInterest ? 'Update' : 'Create'}
+            Save
           </Button>
         </DialogActions>
       </Dialog>
