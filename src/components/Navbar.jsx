@@ -3,6 +3,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useInterests } from '../contexts/InterestContext'
 import { useProfile } from '../contexts/ProfileContext'
+import { useColorMode } from '../contexts/ThemeContext'
 import {
   AppBar,
   Box,
@@ -13,10 +14,16 @@ import {
   Container,
   Button,
   MenuItem,
+  Tooltip,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import SettingsIcon from '@mui/icons-material/Settings'
+import Brightness4Icon from '@mui/icons-material/Brightness4'
+import Brightness7Icon from '@mui/icons-material/Brightness7'
+import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 
 function Navbar() {
   const [anchorElNav, setAnchorElNav] = useState(null)
@@ -24,6 +31,8 @@ function Navbar() {
   const { user, signOut } = useAuth()
   const { interests, loading } = useInterests()
   const { profile } = useProfile()
+  const { toggleColorMode, toggleAutoMode, mode, isAuto } = useColorMode()
+  const [themeMenu, setThemeMenu] = useState(null)
 
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget)
@@ -39,6 +48,14 @@ function Navbar() {
 
   const handleCloseManageMenu = () => {
     setAnchorElManage(null)
+  }
+
+  const handleThemeMenuOpen = (event) => {
+    setThemeMenu(event.currentTarget)
+  }
+
+  const handleThemeMenuClose = () => {
+    setThemeMenu(null)
   }
 
   const buttonStyle = {
@@ -211,6 +228,64 @@ function Navbar() {
 
           {/* Right side items */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Tooltip title="Theme settings">
+              <IconButton
+                onClick={handleThemeMenuOpen}
+                color="inherit"
+              >
+                {isAuto ? (
+                  <SettingsBrightnessIcon />
+                ) : mode === 'light' ? (
+                  <Brightness7Icon />
+                ) : (
+                  <Brightness4Icon />
+                )}
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={themeMenu}
+              open={Boolean(themeMenu)}
+              onClose={handleThemeMenuClose}
+              onClick={handleThemeMenuClose}
+            >
+              <MenuItem
+                onClick={() => {
+                  toggleAutoMode()
+                }}
+                selected={isAuto}
+              >
+                <ListItemIcon>
+                  <SettingsBrightnessIcon />
+                </ListItemIcon>
+                <ListItemText>System</ListItemText>
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  toggleAutoMode()
+                  toggleColorMode()
+                }}
+                selected={!isAuto && mode === 'light'}
+              >
+                <ListItemIcon>
+                  <Brightness7Icon />
+                </ListItemIcon>
+                <ListItemText>Light</ListItemText>
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  toggleAutoMode()
+                  if (mode === 'light') {
+                    toggleColorMode()
+                  }
+                }}
+                selected={!isAuto && mode === 'dark'}
+              >
+                <ListItemIcon>
+                  <Brightness4Icon />
+                </ListItemIcon>
+                <ListItemText>Dark</ListItemText>
+              </MenuItem>
+            </Menu>
             {user ? (
               <>
                 {user.email === 'golfergeek@gmail.com' && (

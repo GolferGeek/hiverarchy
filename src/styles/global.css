@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease;
+}
+
+/* Markdown Editor Styles */
+.w-md-editor {
+  background-color: var(--md-bg) !important;
+  transition: background-color 0.3s ease !important;
+}
+
+.w-md-editor-text-pre > code,
+.w-md-editor-text-input {
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  color: var(--md-text) !important;
+}
+
+.wmde-markdown {
+  background-color: var(--md-bg) !important;
+  color: var(--md-text) !important;
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  transition: background-color 0.3s ease, color 0.3s ease !important;
+}
+
+/* Theme Variables */
+:root {
+  --md-bg: #ffffff;
+  --md-text: #2D3250;
+}
+
+[data-theme='dark'] {
+  --md-bg: #23242F;
+  --md-text: #E8E9F1;
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar - Light Mode */
+:root {
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #c5c5c5;
+  --scrollbar-thumb-hover: #a8a8a8;
+}
+
+/* Custom Scrollbar - Dark Mode */
+[data-theme='dark'] {
+  --scrollbar-track: #2A2B36;
+  --scrollbar-thumb: #424769;
+  --scrollbar-thumb-hover: #676F9D;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Link Styles */
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s ease;
+}
+
+/* Transitions */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 200ms ease-in;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 200ms ease-in;
+}
+
+/* Selection Color */
+::selection {
+  background: var(--selection-bg, rgba(45, 50, 80, 0.1));
+  color: var(--selection-text, #2D3250);
+}
+
+[data-theme='dark'] ::selection {
+  --selection-bg: rgba(136, 145, 189, 0.2);
+  --selection-text: #E8E9F1;
+}
+
+/* Image styles */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Container max-width for ultra-wide screens */
+@media (min-width: 2000px) {
+  .MuiContainer-root {
+    max-width: 1400px !important;
+  }
+}
+
+/* Theme Transition */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+} 

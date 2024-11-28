@@ -2,10 +2,11 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { InterestProvider } from './contexts/InterestContext'
 import { ProfileProvider } from './contexts/ProfileContext'
-import { ThemeProvider } from './components/ThemeProvider'
+import { ThemeProvider } from './contexts/ThemeContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import { lazy, Suspense } from 'react'
+import './styles/global.css'
 
 const Home = lazy(() => import('./pages/Home'))
 const Login = lazy(() => import('./pages/Login'))
