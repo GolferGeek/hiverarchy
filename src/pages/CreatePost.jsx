@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import MDEditor from '@uiw/react-md-editor'
 import { supabase } from '../lib/supabase'
 import ImageUpload from '../components/ImageUpload'
@@ -142,29 +142,40 @@ function CreatePost() {
         .insert([{
           ...post,
           user_id: user.id,
-          arc_id: post.parent_id ? post.arc_id : null // Temporarily null for new posts
+          parent_id: post.parent_id ? parseInt(post.parent_id) : null,
+          arc_id: null // Always set to null initially
         }])
         .select()
         .single()
 
       if (insertError) throw insertError
 
-      // For top-level posts, update arc_id to be the same as id
-      if (!post.parent_id) {
-        const { error: updateError } = await supabase
+      // If this is a child post and parent has an arc_id, update this post's arc_id
+      if (post.parent_id) {
+        const { data: parentPost, error: parentError } = await supabase
           .from('posts')
-          .update({ arc_id: newPost.id })
-          .eq('id', newPost.id)
+          .select('arc_id')
+          .eq('id', parseInt(post.parent_id))
+          .single()
+
+        if (parentError) throw parentError
+
+        // Use parent's arc_id if it exists, otherwise use parent's id as the arc_id
+        const arcId = parentPost.arc_id || parseInt(post.parent_id)
+
+        // Update both this post and parent (if parent doesn't have arc_id set)
+        const { error: updateError } = await supabase
+          .rpc('update_post_arc', { 
+            post_id: newPost.id,
+            parent_post_id: parseInt(post.parent_id),
+            arc_identifier: arcId
+          })
 
         if (updateError) throw updateError
       }
 
-      // Navigate back to the post list or parent post
-      if (post.parent_id) {
-        navigate(`/post/${post.parent_id}`)
-      } else {
-        navigate('/')
-      }
+      // Navigate to the new post's view page
+      navigate(`/post/${newPost.id}`)
     } catch (error) {
       setError(error.message)
     } finally {
@@ -192,6 +203,18 @@ function CreatePost() {
 
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
+            {state?.parentPost && (
+              <Grid item xs={12}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Creating child post for: <Link to={`/post/${state.parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
+                      {state.parentPost.title}
+                    </Link>
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+
             <Grid item xs={12}>
               <TextField
                 label="Title"

@@ -42,20 +42,56 @@ function Home() {
       {/* Hero Section */}
       <Box 
         sx={{
-          bgcolor: 'primary.main',
-          color: 'white',
+          bgcolor: 'background.default',
+          color: 'text.primary',
           py: 8,
           mt: 4,
-          textAlign: 'center'
         }}
       >
         <Container maxWidth="md">
-          <Typography variant="h2" component="h1" gutterBottom>
-            Welcome to GolferGeek
-          </Typography>
-          <Typography variant="h5" component="h2" gutterBottom>
-            Exploring the intersections of code, golf, mentorship, and life
-          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: 4,
+            flexDirection: { xs: 'column', md: 'row' }
+          }}>
+            <Box sx={{ 
+              width: { xs: '200px', md: '300px' },
+              height: 'auto',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <img 
+                src="/images/gg-logo.jpg" 
+                alt="GolferGeek"
+                style={{ 
+                  maxWidth: '100%', 
+                  height: 'auto',
+                  display: 'block',
+                  margin: 0
+                }}
+              />
+            </Box>
+            <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+              <Typography 
+                variant="h2" 
+                component="h1" 
+                gutterBottom 
+                sx={{ color: '#2E7D32' }}
+              >
+                Welcome to GolferGeek
+              </Typography>
+              <Typography 
+                variant="h5" 
+                component="h2" 
+                gutterBottom
+                sx={{ color: 'text.secondary' }}
+              >
+                Exploring the intersections of code, golf, mentorship, and life
+              </Typography>
+            </Box>
+          </Box>
         </Container>
       </Box>
 

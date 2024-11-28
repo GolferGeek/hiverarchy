@@ -26,14 +26,26 @@ function ViewPost() {
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [parentPost, setParentPost] = useState(null)
+  const [childPosts, setChildPosts] = useState([])
   const navigate = useNavigate()
   const { user } = useAuth()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const isAuthor = user && post && user.id === post.user_id
+  const isChildPost = post && post.arc_id && post.arc_id !== post.id
 
   useEffect(() => {
     fetchPost()
   }, [id])
+
+  useEffect(() => {
+    if (post) {
+      if (post.parent_id) {
+        fetchParentPost(post.parent_id)
+      }
+      fetchChildPosts(post.id)
+    }
+  }, [post])
 
   async function fetchPost() {
     try {
@@ -72,6 +84,39 @@ function ViewPost() {
       setError('Failed to load post. Please try again later.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchParentPost(parentId) {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, title')
+        .eq('id', parentId)
+        .single()
+
+      if (error) throw error
+      setParentPost(data)
+    } catch (error) {
+      console.error('Error fetching parent post:', error)
+    }
+  }
+
+  async function fetchChildPosts(postId) {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, title, created_at')
+        .eq('parent_id', postId)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      
+      // Remove duplicates by ID
+      const uniquePosts = data ? Array.from(new Map(data.map(post => [post.id, post])).values()) : []
+      setChildPosts(uniquePosts)
+    } catch (error) {
+      console.error('Error fetching child posts:', error)
     }
   }
 
@@ -127,6 +172,16 @@ function ViewPost() {
       <Paper elevation={3} sx={{ p: 4 }}>
         {/* Post Header */}
         <Box sx={{ mb: 4 }}>
+          {isChildPost && parentPost && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Part of thread: <Link to={`/post/${parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
+                  {parentPost.title}
+                </Link>
+              </Typography>
+            </Box>
+          )}
+
           <Typography variant="h3" component="h1" gutterBottom>
             {post.title}
           </Typography>
@@ -190,26 +245,37 @@ function ViewPost() {
           </Stack>
 
           {/* Edit/Delete Buttons */}
-          {isAuthor && (
-            <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<EditIcon />}
-                component={Link}
-                to={`/edit/${post.id}`}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={handleDeleteClick}
-              >
-                Delete
-              </Button>
-            </Box>
-          )}
+          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+            {isAuthor && (
+              <>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  component={Link}
+                  to={`/create`}
+                  state={{ parentPost: post }}
+                >
+                  Create Child Post
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  component={Link}
+                  to={`/edit/${post.id}`}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={handleDeleteClick}
+                >
+                  Delete
+                </Button>
+              </>
+            )}
+          </Box>
         </Box>
 
         <Divider sx={{ my: 3 }} />
@@ -225,6 +291,48 @@ function ViewPost() {
         >
           <MDEditor.Markdown source={post.content} />
         </Box>
+
+        {/* Child Posts Section */}
+        {childPosts.length > 0 && (
+          <>
+            <Divider sx={{ my: 4 }} />
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Continued in:
+              </Typography>
+              <Stack spacing={2}>
+                {childPosts.map((childPost) => (
+                  <Box 
+                    key={childPost.id}
+                    component={Link}
+                    to={`/post/${childPost.id}`}
+                    sx={{
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      p: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                      }
+                    }}
+                  >
+                    <Typography variant="subtitle1">
+                      {childPost.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {format(new Date(childPost.created_at), 'MMMM d, yyyy')}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          </>
+        )}
 
         <Divider sx={{ my: 4 }} />
 

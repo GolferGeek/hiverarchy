@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
+      sourcemap: shouldGenerateSourcemap,
       rollupOptions: {
         output: {
           manualChunks: {
@@ -35,11 +36,7 @@ export default defineConfig(({ mode }) => {
           }
         }
       },
-      // Ensure proper MIME types
       manifest: true,
-      // Generate source maps based on environment variable
-      sourcemap: shouldGenerateSourcemap,
-      // Increase the warning limit for chunk sizes
       chunkSizeWarningLimit: 1000
     },
     optimizeDeps: {

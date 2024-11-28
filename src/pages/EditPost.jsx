@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import MDEditor from '@uiw/react-md-editor'
@@ -38,6 +39,12 @@ export default function EditPost() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [images, setImages] = useState([])
   const [loadingPost, setLoadingPost] = useState(true)
+  const [postUserId, setPostUserId] = useState(null)
+  const [parentPost, setParentPost] = useState(null)
+  const [childPosts, setChildPosts] = useState([])
+  const [arcId, setArcId] = useState(null)
+  const isAuthor = user && user.id === postUserId
+  const isChildPost = arcId && arcId !== parseInt(id)
 
   const availableInterests = [
     { value: 'coder', label: 'Coder' },
@@ -69,12 +76,51 @@ export default function EditPost() {
         setInterests(post.interests || [])
         setTags(post.tags ? JSON.parse(post.tags) : [])
         setImages(post.images || [])
+        setPostUserId(post.user_id)
+        setArcId(post.arc_id)
+
+        // Fetch parent and child posts
+        if (post.parent_id) {
+          fetchParentPost(post.parent_id)
+        }
+        fetchChildPosts(post.id)
       }
     } catch (error) {
       console.error('Error fetching post:', error)
       setError('Error fetching post')
     } finally {
       setLoadingPost(false)
+    }
+  }
+
+  async function fetchParentPost(parentId) {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, title')
+        .eq('id', parentId)
+        .single()
+
+      if (error) throw error
+      setParentPost(data)
+    } catch (error) {
+      console.error('Error fetching parent post:', error)
+    }
+  }
+
+  async function fetchChildPosts(postId) {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, title, created_at')
+        .eq('parent_id', postId)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      const uniquePosts = data ? Array.from(new Map(data.map(post => [post.id, post])).values()) : []
+      setChildPosts(uniquePosts)
+    } catch (error) {
+      console.error('Error fetching child posts:', error)
     }
   }
 
@@ -216,6 +262,18 @@ export default function EditPost() {
 
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
+            {parentPost && (
+              <Grid item xs={12}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Part of thread: <Link to={`/post/${parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
+                      {parentPost.title}
+                    </Link>
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+
             <Grid item xs={12}>
               <TextField
                 label="Title"
@@ -347,8 +405,65 @@ export default function EditPost() {
               />
             </Grid>
 
+            {childPosts.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Continued in:
+                </Typography>
+                <Stack spacing={2}>
+                  {childPosts.map((childPost) => (
+                    <Box 
+                      key={childPost.id}
+                      component={Link}
+                      to={`/post/${childPost.id}`}
+                      sx={{
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        p: 2,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                        }
+                      }}
+                    >
+                      <Typography variant="subtitle1">
+                        {childPost.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {format(new Date(childPost.created_at), 'MMMM d, yyyy')}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Grid>
+            )}
+
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                {isAuthor && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    component={Link}
+                    to={`/create`}
+                    state={{ parentPost: { 
+                      id: parseInt(id),
+                      title,
+                      content,
+                      excerpt,
+                      interests,
+                      tags,
+                      images
+                    }}}
+                  >
+                    Create Child Post
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   onClick={() => navigate(`/post/${id}`)}
