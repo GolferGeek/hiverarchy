@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import MarkdownEditor from '../components/MarkdownEditor'
+import ImageUpload from '../components/ImageUpload'
 import {
   Container,
   Typography,
@@ -40,65 +41,35 @@ function ManageInterests() {
     content: ''
   })
 
-  const defaultInterests = [
-    {
-      name: 'coder',
-      title: 'Coder',
-      description: 'Exploring the world of programming and software development',
-      image_path: '/images/coder.jpg',
-      route_path: '/coder'
-    },
-    {
-      name: 'golfer',
-      title: 'Golfer',
-      description: 'Sharing golf experiences, tips, and achievements',
-      image_path: '/images/golfer.jpg',
-      route_path: '/golfer'
-    },
-    {
-      name: 'mentor',
-      title: 'Mentor',
-      description: 'Guiding and supporting others in their journey',
-      image_path: '/images/mentor.jpg',
-      route_path: '/mentor'
-    },
-    {
-      name: 'older',
-      title: 'Older',
-      description: 'Insights and reflections on the aging process',
-      image_path: '/images/older.jpg',
-      route_path: '/older'
-    }
-  ]
-
   useEffect(() => {
     if (!user || user.email !== 'golfergeek@gmail.com') {
       navigate('/')
       return
     }
     
-    // Update interests with correct image paths
-    const updateInterestPaths = async () => {
+    // Create interest-images bucket if it doesn't exist
+    const setupStorage = async () => {
       try {
-        for (const defaultInterest of defaultInterests) {
-          const { error } = await supabase
-            .from('interests')
-            .update({ 
-              image_path: defaultInterest.image_path
-            })
-            .eq('name', defaultInterest.name)
+        const { data: buckets } = await supabase.storage.listBuckets()
+        const bucketExists = buckets.some(bucket => bucket.name === 'interest-images')
         
+        if (!bucketExists) {
+          const { error } = await supabase.storage.createBucket('interest-images', {
+            public: true,
+            allowedMimeTypes: ['image/*'],
+            fileSizeLimit: 5242880, // 5MB
+          })
+          
           if (error) {
-            console.error('Error updating interest:', error)
+            console.error('Error creating bucket:', error)
           }
         }
-        console.log('Interest paths updated')
       } catch (error) {
-        console.error('Error in updateInterestPaths:', error)
+        console.error('Error in setupStorage:', error)
       }
     }
-    
-    updateInterestPaths()
+
+    setupStorage()
     fetchInterests()
   }, [user, navigate])
 
@@ -124,7 +95,7 @@ function ManageInterests() {
         description: typeof interest.description === 'object' 
           ? JSON.stringify(interest.description, null, 2)
           : interest.description || '',
-        image_path: interest.image_path,
+        image_path: interest.image_path || '',
         content: interest.content || ''
       })
     } else {
@@ -165,12 +136,28 @@ function ManageInterests() {
     }))
   }
 
+  const handleImageUpload = (uploadedImages) => {
+    if (uploadedImages && uploadedImages.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        image_path: uploadedImages[0]
+      }))
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({
+      ...prev,
+      image_path: ''
+    }))
+  }
+
   const handleSubmit = async () => {
     try {
       const submissionData = {
         ...formData,
         description: formData.description,
-        user_id: user?.id || null // Add user_id to submission
+        user_id: user?.id || null
       }
 
       if (editingInterest) {
@@ -233,7 +220,7 @@ function ManageInterests() {
             <TableRow>
               <TableCell>Title</TableCell>
               <TableCell>Description</TableCell>
-              <TableCell>Content Preview</TableCell>
+              <TableCell>Image</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -252,15 +239,13 @@ function ManageInterests() {
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  {interest.content ? (
-                    <Typography noWrap sx={{ maxWidth: 200 }}>
-                      {interest.content.substring(0, 100)}
-                      {interest.content.length > 100 ? '...' : ''}
-                    </Typography>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No content
-                    </Typography>
+                  {interest.image_path && (
+                    <Box
+                      component="img"
+                      src={interest.image_path}
+                      alt={interest.title}
+                      sx={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 1 }}
+                    />
                   )}
                 </TableCell>
                 <TableCell>
@@ -306,13 +291,15 @@ function ManageInterests() {
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                name="image_path"
-                label="Image Path"
-                value={formData.image_path}
-                onChange={handleChange}
-                fullWidth
-                margin="normal"
+              <Typography variant="subtitle1" gutterBottom>
+                Interest Image
+              </Typography>
+              <ImageUpload 
+                onUpload={handleImageUpload}
+                onRemove={handleRemoveImage}
+                existingImages={formData.image_path ? [formData.image_path] : []}
+                bucket="interest-images"
+                folder="interest-images"
               />
             </Grid>
             <Grid item xs={12}>

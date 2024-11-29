@@ -58,6 +58,20 @@ function Navbar() {
     setThemeMenu(null)
   }
 
+  const handleThemeChange = (type) => {
+    if (type === 'system') {
+      toggleAutoMode()
+    } else {
+      if (isAuto) {
+        toggleAutoMode() // Turn off auto mode
+      }
+      if ((type === 'light' && mode === 'dark') || (type === 'dark' && mode === 'light')) {
+        toggleColorMode()
+      }
+    }
+    handleThemeMenuClose()
+  }
+
   const buttonStyle = {
     color: 'white',
     textTransform: 'none',
@@ -249,9 +263,7 @@ function Navbar() {
               onClick={handleThemeMenuClose}
             >
               <MenuItem
-                onClick={() => {
-                  toggleAutoMode()
-                }}
+                onClick={() => handleThemeChange('system')}
                 selected={isAuto}
               >
                 <ListItemIcon>
@@ -260,10 +272,7 @@ function Navbar() {
                 <ListItemText>System</ListItemText>
               </MenuItem>
               <MenuItem
-                onClick={() => {
-                  toggleAutoMode()
-                  toggleColorMode()
-                }}
+                onClick={() => handleThemeChange('light')}
                 selected={!isAuto && mode === 'light'}
               >
                 <ListItemIcon>
@@ -272,12 +281,7 @@ function Navbar() {
                 <ListItemText>Light</ListItemText>
               </MenuItem>
               <MenuItem
-                onClick={() => {
-                  toggleAutoMode()
-                  if (mode === 'light') {
-                    toggleColorMode()
-                  }
-                }}
+                onClick={() => handleThemeChange('dark')}
                 selected={!isAuto && mode === 'dark'}
               >
                 <ListItemIcon>

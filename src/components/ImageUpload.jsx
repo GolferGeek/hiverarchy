@@ -1,19 +1,18 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { 
-  Button, 
-  Box, 
-  ImageList, 
-  ImageListItem, 
-  IconButton, 
-  Typography,
+import {
+  Box,
+  Button,
   CircularProgress,
+  ImageList,
+  ImageListItem,
+  IconButton,
   Tooltip,
-  Snackbar
 } from '@mui/material'
-import { Delete as DeleteIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import DeleteIcon from '@mui/icons-material/Delete'
 
-function ImageUpload({ onUpload, onRemove, existingImages = [] }) {
+function ImageUpload({ onUpload, onRemove, existingImages = [], bucket = 'post-images', folder = 'post-images' }) {
   const [uploading, setUploading] = useState(false)
   const [showCopySuccess, setShowCopySuccess] = useState(false)
 
@@ -24,16 +23,16 @@ function ImageUpload({ onUpload, onRemove, existingImages = [] }) {
       const file = event.target.files[0]
       const fileExt = file.name.split('.').pop()
       const fileName = `${Math.random()}.${fileExt}`
-      const filePath = `post-images/${fileName}`
+      const filePath = `${folder}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from('post-images')
+        .from(bucket)
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
       const { data } = supabase.storage
-        .from('post-images')
+        .from(bucket)
         .getPublicUrl(filePath)
 
       if (data?.publicUrl) {
@@ -92,7 +91,7 @@ function ImageUpload({ onUpload, onRemove, existingImages = [] }) {
               >
                 <img
                   src={imageUrl}
-                  alt={`Post image ${index + 1}`}
+                  alt={`Image ${index + 1}`}
                   loading="lazy"
                   style={{ height: '200px', objectFit: 'cover' }}
                 />
@@ -145,19 +144,6 @@ function ImageUpload({ onUpload, onRemove, existingImages = [] }) {
           ))}
         </ImageList>
       )}
-
-      {existingImages?.length === 0 && (
-        <Typography color="text.secondary">
-          No images uploaded yet
-        </Typography>
-      )}
-
-      <Snackbar
-        open={showCopySuccess}
-        autoHideDuration={2000}
-        onClose={() => setShowCopySuccess(false)}
-        message="Markdown copied to clipboard!"
-      />
     </Box>
   )
 }

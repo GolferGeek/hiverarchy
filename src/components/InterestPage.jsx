@@ -140,6 +140,10 @@ function InterestPage() {
               boxShadow: 3,
               mb: 4
             }}
+            onError={(e) => {
+              console.error(`Failed to load image for ${interestData.name}:`, interestData.image_path);
+              e.target.style.display = 'none';
+            }}
           />
         )}
       </Box>

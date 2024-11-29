@@ -14,7 +14,7 @@ export function ThemeProvider({ children }) {
   const storedAuto = localStorage.getItem('autoMode') === 'true'
   
   const [mode, setMode] = useState(storedMode || 'light')
-  const [isAuto, setIsAuto] = useState(storedAuto || true) // Default to auto mode
+  const [isAuto, setIsAuto] = useState(storedAuto)
   const [systemPreference, setSystemPreference] = useState('light')
 
   // Initialize and handle system preference
@@ -47,17 +47,19 @@ export function ThemeProvider({ children }) {
   const colorMode = useMemo(
     () => ({
       toggleColorMode: () => {
-        if (!isAuto) {
-          setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
-        }
+        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
       },
       toggleAutoMode: () => {
-        setIsAuto(prev => !prev)
+        const newAutoValue = !isAuto
+        setIsAuto(newAutoValue)
+        if (newAutoValue) {
+          setMode(systemPreference)
+        }
       },
       mode,
       isAuto,
     }),
-    [mode, isAuto]
+    [mode, isAuto, systemPreference]
   )
 
   const theme = useMemo(
