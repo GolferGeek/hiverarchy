@@ -36,14 +36,11 @@ export function ProfileProvider({ children }) {
         .single()
 
       if (error) {
-        console.error('Error fetching profile:', error)
         setProfile(null)
       } else {
-        console.log('Fetched profile:', data)
         setProfile(data)
       }
     } catch (error) {
-      console.error('Unexpected error:', error)
       setProfile(null)
     } finally {
       setLoading(false)

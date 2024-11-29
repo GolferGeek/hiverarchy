@@ -3,9 +3,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useInterests } from '../contexts/InterestContext'
 import { useProfile } from '../contexts/ProfileContext'
-import { AppBar, Toolbar, Button, IconButton, Box, Typography } from '@mui/material'
+import { AppBar, Toolbar, Button, IconButton, Box, Menu, MenuItem } from '@mui/material'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
+import SettingsIcon from '@mui/icons-material/Settings'
+import { useState } from 'react'
 
 export default function Navbar() {
   const { user, signOut } = useAuth()
@@ -15,6 +17,7 @@ export default function Navbar() {
   const { username } = useParams()
   const defaultUsername = import.meta.env.VITE_DEFAULT_USERNAME
   const currentUsername = username || defaultUsername
+  const [manageAnchorEl, setManageAnchorEl] = useState(null)
 
   // Sort interests by sequence
   const sortedInterests = [...(interests || [])]
@@ -22,6 +25,14 @@ export default function Navbar() {
 
   if (interestsLoading || profileLoading) {
     return null
+  }
+
+  const handleManageClick = (event) => {
+    setManageAnchorEl(event.currentTarget)
+  }
+
+  const handleManageClose = () => {
+    setManageAnchorEl(null)
   }
 
   return (
@@ -83,18 +94,43 @@ export default function Navbar() {
           </IconButton>
           {user ? (
             <>
-              <Button color="inherit" component={Link} to={`/${currentUsername}/create`}>
-                Create Post
-              </Button>
-              <Button color="inherit" component={Link} to={`/${currentUsername}/manage/posts`}>
-                Posts
-              </Button>
-              <Button color="inherit" component={Link} to={`/${currentUsername}/manage/interests`}>
-                Interests
-              </Button>
-              <Button color="inherit" component={Link} to={`/${currentUsername}/manage/profile`}>
-                Profile
-              </Button>
+              <IconButton
+                color="inherit"
+                onClick={handleManageClick}
+                aria-controls="manage-menu"
+                aria-haspopup="true"
+              >
+                <SettingsIcon />
+              </IconButton>
+              <Menu
+                id="manage-menu"
+                anchorEl={manageAnchorEl}
+                keepMounted
+                open={Boolean(manageAnchorEl)}
+                onClose={handleManageClose}
+              >
+                <MenuItem 
+                  component={Link} 
+                  to={`/${currentUsername}/manage/posts`}
+                  onClick={handleManageClose}
+                >
+                  Posts
+                </MenuItem>
+                <MenuItem 
+                  component={Link} 
+                  to={`/${currentUsername}/manage/profile`}
+                  onClick={handleManageClose}
+                >
+                  Profile
+                </MenuItem>
+                <MenuItem 
+                  component={Link} 
+                  to={`/${currentUsername}/manage/interests`}
+                  onClick={handleManageClose}
+                >
+                  Interests
+                </MenuItem>
+              </Menu>
               <Button color="inherit" onClick={signOut}>
                 Sign Out
               </Button>
