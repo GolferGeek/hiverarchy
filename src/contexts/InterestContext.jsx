@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { useAuth } from './AuthContext'
 
 const InterestContext = createContext()
 
@@ -11,29 +11,54 @@ export function useInterests() {
 export function InterestProvider({ children }) {
   const [interests, setInterests] = useState([])
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
-  const defaultUserId = import.meta.env.VITE_DEFAULT_USER
+  const { username: routeUsername } = useParams()
+  const defaultUsername = import.meta.env.VITE_DEFAULT_USERNAME
 
-  const fetchInterests = async (userId) => {
-    if (!userId) {
+  const fetchInterests = async (username) => {
+    if (!username) {
       setLoading(false)
       return
     }
 
     try {
+      console.log('Fetching interests for username:', username)
+      // First get the user_id from the profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('username', username)
+        .single()
+
+      if (profileError) {
+        console.error('Profile fetch error:', profileError)
+        setInterests([])
+        return
+      }
+
+      if (!profile) {
+        console.error('No profile found for username:', username)
+        setInterests([])
+        return
+      }
+
+      console.log('Found profile:', profile)
+
       const { data: userInterests, error } = await supabase
         .from('interests')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', profile.id)
         .order('sequence', { ascending: true })
         .order('title')
 
       if (error) {
+        console.error('Interests fetch error:', error)
         setInterests([])
       } else {
+        console.log('Fetched interests:', userInterests)
         setInterests(userInterests || [])
       }
     } catch (error) {
+      console.error('Unexpected error:', error)
       setInterests([])
     } finally {
       setLoading(false)
@@ -41,16 +66,16 @@ export function InterestProvider({ children }) {
   }
 
   useEffect(() => {
-    const userId = defaultUserId
-    if (!userId) {
+    const usernameToFetch = defaultUsername || routeUsername
+    if (!usernameToFetch) {
       setInterests([])
       setLoading(false)
       return
     }
     
     setLoading(true)
-    fetchInterests(userId)
-  }, [defaultUserId])
+    fetchInterests(usernameToFetch)
+  }, [defaultUsername, routeUsername])
 
   async function updatePostTags(postId, tags) {
     try {

@@ -3,76 +3,42 @@ import { ThemeProvider as MuiThemeProvider, CssBaseline } from '@mui/material'
 import { createTheme } from '@mui/material/styles'
 import { lightTheme, darkTheme } from '../theme'
 
-const ColorModeContext = createContext({ toggleColorMode: () => {}, toggleAutoMode: () => {}, mode: 'light', isAuto: false })
+const ThemeContext = createContext()
 
-export function useColorMode() {
-  return useContext(ColorModeContext)
+export function useTheme() {
+  return useContext(ThemeContext)
 }
 
 export function ThemeProvider({ children }) {
-  const storedMode = localStorage.getItem('colorMode')
-  const storedAuto = localStorage.getItem('autoMode') === 'true'
-  
-  const [mode, setMode] = useState(storedMode || 'light')
-  const [isAuto, setIsAuto] = useState(storedAuto)
-  const [systemPreference, setSystemPreference] = useState('light')
+  const [darkMode, setDarkMode] = useState(() => {
+    const stored = localStorage.getItem('darkMode')
+    return stored ? JSON.parse(stored) : false
+  })
 
-  // Initialize and handle system preference
   useEffect(() => {
-    const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)')
-    setSystemPreference(prefersDarkMode.matches ? 'dark' : 'light')
+    localStorage.setItem('darkMode', JSON.stringify(darkMode))
+  }, [darkMode])
 
-    const handleChange = (e) => {
-      setSystemPreference(e.matches ? 'dark' : 'light')
-    }
-
-    prefersDarkMode.addEventListener('change', handleChange)
-    return () => prefersDarkMode.removeEventListener('change', handleChange)
-  }, [])
-
-  // Update mode based on system preference when auto mode is enabled
-  useEffect(() => {
-    if (isAuto) {
-      setMode(systemPreference)
-    }
-  }, [isAuto, systemPreference])
-
-  // Persist settings
-  useEffect(() => {
-    localStorage.setItem('colorMode', mode)
-    localStorage.setItem('autoMode', isAuto.toString())
-    document.documentElement.setAttribute('data-theme', mode)
-  }, [mode, isAuto])
-
-  const colorMode = useMemo(
-    () => ({
-      toggleColorMode: () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
-      },
-      toggleAutoMode: () => {
-        const newAutoValue = !isAuto
-        setIsAuto(newAutoValue)
-        if (newAutoValue) {
-          setMode(systemPreference)
-        }
-      },
-      mode,
-      isAuto,
-    }),
-    [mode, isAuto, systemPreference]
-  )
+  const toggleDarkMode = () => {
+    setDarkMode(prev => !prev)
+  }
 
   const theme = useMemo(
-    () => createTheme(mode === 'light' ? lightTheme : darkTheme),
-    [mode]
+    () => createTheme(darkMode ? darkTheme : lightTheme),
+    [darkMode]
   )
 
+  const value = {
+    darkMode,
+    toggleDarkMode
+  }
+
   return (
-    <ColorModeContext.Provider value={colorMode}>
+    <ThemeContext.Provider value={value}>
       <MuiThemeProvider theme={theme}>
         <CssBaseline />
         {children}
       </MuiThemeProvider>
-    </ColorModeContext.Provider>
+    </ThemeContext.Provider>
   )
 } 
