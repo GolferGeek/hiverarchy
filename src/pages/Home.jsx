@@ -1,34 +1,34 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Box, 
-  Typography, 
-  Container, 
-  Card, 
-  CardContent, 
-  CardMedia, 
-  Button,
+import { useInterests } from '../contexts/InterestContext'
+import { useProfile } from '../contexts/ProfileContext'
+import {
+  Box,
+  Container,
+  Typography,
+  Card,
+  CardMedia,
   CircularProgress
 } from '@mui/material'
-import { useInterests } from '../contexts/InterestContext'
-import MDEditor from '@uiw/react-md-editor'
 
 function Home() {
   const navigate = useNavigate()
-  const { interests, loading } = useInterests()
+  const { interests, loading: interestsLoading } = useInterests()
+  const { profile, loading: profileLoading } = useProfile()
 
   const getImagePath = (interest) => {
     try {
-      return `/images/${interest.name}.jpg`
+      return interest.image_path || '/images/default.jpg'
     } catch (error) {
       return '/images/default.jpg'
     }
   }
 
-  if (loading) {
+  if (interestsLoading || profileLoading) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 2 }}>
         <CircularProgress />
-        <Typography>Loading interests...</Typography>
+        <Typography>Loading...</Typography>
       </Box>
     )
   }
@@ -55,47 +55,83 @@ function Home() {
             gap: 4,
             flexDirection: { xs: 'column', md: 'row' }
           }}>
-            <Box sx={{ 
-              width: { xs: '200px', md: '300px' },
-              height: 'auto',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <img 
-                src="/images/gg-logo.jpg" 
-                alt="GolferGeek"
-                style={{ 
-                  maxWidth: '100%', 
+            {profile?.logo ? (
+              <Box sx={{ 
+                width: { xs: '200px', md: '300px' },
+                height: 'auto',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                '& img': {
+                  maxWidth: '100%',
                   height: 'auto',
                   display: 'block',
-                  margin: 0
-                }}
-              />
-            </Box>
-            <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+                  margin: 0,
+                  borderRadius: 2,
+                  boxShadow: 3
+                }
+              }}>
+                <img 
+                  src={profile.logo}
+                  alt={profile.site_name || 'Site Logo'}
+                />
+              </Box>
+            ) : (
+              <Box sx={{ 
+                width: { xs: '200px', md: '300px' },
+                height: 'auto',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <img 
+                  src="/images/gg-logo.jpg"
+                  alt="Default Logo"
+                  style={{ 
+                    maxWidth: '100%',
+                    height: 'auto',
+                    display: 'block',
+                    margin: 0,
+                    borderRadius: 2,
+                    boxShadow: 3
+                  }}
+                />
+              </Box>
+            )}
+            <Box sx={{ 
+              textAlign: { xs: 'center', md: 'left' },
+              flex: 1
+            }}>
               <Typography 
                 variant="h2" 
                 component="h1" 
                 gutterBottom 
-                sx={{ color: '#2E7D32' }}
+                sx={{ 
+                  color: 'primary.main',
+                  fontWeight: 'bold',
+                  fontSize: { xs: '2.5rem', md: '3.5rem' }
+                }}
               >
-                Welcome to GolferGeek
+                {profile?.site_name || 'Welcome'}
               </Typography>
               <Typography 
                 variant="h5" 
                 component="h2" 
                 gutterBottom
-                sx={{ color: 'text.secondary' }}
+                sx={{ 
+                  color: 'text.secondary',
+                  fontWeight: 'medium',
+                  lineHeight: 1.4
+                }}
               >
-                Exploring the intersections of code, golf, mentorship, and life
+                {profile?.tagline || 'Exploring ideas and sharing experiences'}
               </Typography>
             </Box>
           </Box>
         </Container>
       </Box>
 
-      {/* Interests Column */}
+      {/* Interests Section */}
       <Container sx={{ py: 8 }} maxWidth="lg">
         {sortedInterests.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -133,33 +169,22 @@ function Home() {
                   image={getImagePath(interest)}
                   alt={interest.title}
                 />
-                <CardContent sx={{ 
-                  flex: '1 1 auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  p: 4
-                }}>
-                  <Box>
-                    <Typography variant="h4" component="h2" gutterBottom>
-                      {interest.title}
-                    </Typography>
-                    <Box data-color-mode="light" sx={{ mb: 2 }}>
-                      <MDEditor.Markdown source={interest.description || 'No description available.'} />
-                    </Box>
-                  </Box>
-                  <Button 
-                    variant="contained" 
-                    color="primary"
-                    sx={{ alignSelf: 'flex-start' }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(`/${interest.name}`)
-                    }}
-                  >
-                    Learn More
-                  </Button>
-                </CardContent>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    width: { xs: '100%', md: '60%' },
+                    p: 4,
+                  }}
+                >
+                  <Typography variant="h4" component="h2" gutterBottom>
+                    {interest.title}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    {interest.description}
+                  </Typography>
+                </Box>
               </Card>
             ))}
           </Box>

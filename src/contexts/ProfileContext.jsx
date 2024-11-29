@@ -18,6 +18,7 @@ export function ProfileProvider({ children }) {
 
   async function fetchProfile() {
     try {
+      setLoading(true)
       const { data, error } = await supabase
         .from('profiles')
         .select('*')

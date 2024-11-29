@@ -1,15 +1,17 @@
 {
-  "name": "golfergeek",
+  "name": "gg-blog",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:testing": "vite --mode testing",
+    "dev:hierarchy": "vite --mode hierarchy",
     "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "deploy": "vite build && gh-pages -d dist",
-    "predeploy": "npm run build"
+    "build:testing": "vite build --mode testing",
+    "build:hierarchy": "vite build --mode hierarchy",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.13.3",

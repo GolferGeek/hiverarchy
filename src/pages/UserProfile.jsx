@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Box, TextField, Button, Typography, Container } from '@mui/material'
 import MarkdownEditor from '../components/MarkdownEditor'
+import ImageUpload from '../components/ImageUpload'
 import { supabase } from '../lib/supabase'
 
 const UserProfile = () => {
   const [username, setUsername] = useState('')
   const [resume, setResume] = useState('')
   const [logo, setLogo] = useState('')
+  const [tagline, setTagline] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -21,7 +23,7 @@ const UserProfile = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('username, resume, logo')
+        .select('username, resume, logo, tagline')
         .eq('id', user.id)
         .single()
 
@@ -31,6 +33,7 @@ const UserProfile = () => {
         setUsername(data.username || '')
         setResume(data.resume || '')
         setLogo(data.logo || '')
+        setTagline(data.tagline || '')
       }
     } catch (error) {
       console.error('Error fetching profile:', error.message)
@@ -38,39 +41,14 @@ const UserProfile = () => {
     }
   }
 
-  const uploadLogo = async (event) => {
-    try {
-      setLoading(true)
-      const file = event.target.files[0]
-      if (!file) return
-
-      const fileExt = file.name.split('.').pop()
-      const filePath = `site-logo.${fileExt}`
-
-      // Remove existing logo if any
-      await supabase.storage
-        .from('logos')
-        .remove([filePath])
-        .catch(console.error) // Ignore error if file doesn't exist
-
-      const { error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(filePath, file, { upsert: true })
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('logos')
-        .getPublicUrl(filePath)
-
-      setLogo(publicUrl)
-      setMessage('Logo uploaded successfully')
-    } catch (error) {
-      console.error('Error uploading logo:', error.message)
-      setMessage('Error uploading logo')
-    } finally {
-      setLoading(false)
+  const handleLogoUpload = (uploadedImages) => {
+    if (uploadedImages && uploadedImages.length > 0) {
+      setLogo(uploadedImages[0])
     }
+  }
+
+  const handleLogoRemove = async () => {
+    setLogo('')
   }
 
   const updateProfile = async () => {
@@ -84,7 +62,7 @@ const UserProfile = () => {
         username,
         resume,
         logo,
-        updated_at: new Date().toISOString(),
+        tagline,
       }
 
       const { error } = await supabase
@@ -125,6 +103,16 @@ const UserProfile = () => {
           disabled={loading}
         />
 
+        <TextField
+          margin="normal"
+          fullWidth
+          label="Tagline"
+          value={tagline}
+          onChange={(e) => setTagline(e.target.value)}
+          disabled={loading}
+          helperText="A brief description that appears on the home page"
+        />
+
         <Box sx={{ mt: 2, mb: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
             Resume (Markdown)
@@ -139,24 +127,13 @@ const UserProfile = () => {
           <Typography variant="subtitle1" gutterBottom>
             Logo
           </Typography>
-          {logo && (
-            <Box sx={{ mb: 2 }}>
-              <img src={logo} alt="Profile logo" style={{ maxWidth: '200px' }} />
-            </Box>
-          )}
-          <Button
-            variant="contained"
-            component="label"
-            disabled={loading}
-          >
-            Upload Logo
-            <input
-              type="file"
-              hidden
-              accept="image/*"
-              onChange={uploadLogo}
-            />
-          </Button>
+          <ImageUpload 
+            onUpload={handleLogoUpload}
+            onRemove={handleLogoRemove}
+            existingImages={logo ? [logo] : []}
+            bucket="profile_logos"
+            showCopyOption={false}
+          />
         </Box>
 
         <Button
