@@ -1,4 +1,4 @@
-# AI-Assisted Blog Post Development Plan
+Ing audience related topics and child topics# AI-Assisted Blog Post Development Plan
 
 ## 1. Infrastructure Setup
 - Create a new `.env` file for API keys (OpenAI, Anthropic, etc.)

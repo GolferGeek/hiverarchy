@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { InterestProvider } from './contexts/InterestContext'
 import { ProfileProvider } from './contexts/ProfileContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { AIProvider } from './services/ai/index.jsx'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import { lazy, Suspense } from 'react'
@@ -19,6 +20,7 @@ const InterestPage = lazy(() => import('./components/InterestPage'))
 const UserProfile = lazy(() => import('./pages/UserProfile'))
 const Posts = lazy(() => import('./pages/Posts'))
 const Resume = lazy(() => import('./pages/Resume'))
+const PostWriter = lazy(() => import('./pages/PostWriter'))
 
 // Route guard component to check for username
 function RouteGuard({ children }) {
@@ -26,7 +28,7 @@ function RouteGuard({ children }) {
   const location = useLocation()
   const defaultUsername = import.meta.env.VITE_DEFAULT_USERNAME
 
-  // Skip redirect for login, signup, and root routes
+  // Skip redirect for login and signup routes
   if (location.pathname === '/login' || 
       location.pathname === '/signup' || 
       location.pathname === '/') {
@@ -65,59 +67,66 @@ function App() {
         <ThemeProvider>
           <ProfileProvider>
             <InterestProvider>
-              <RouteGuard>
-                <Navbar />
-                <main className="container">
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <Routes>
-                      {/* Redirect root to default username */}
-                      <Route path="/" element={<Navigate to={`/${defaultUsername}`} replace />} />
-                      
-                      {/* Auth routes - no username needed */}
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/signup" element={<SignUp />} />
-                      
-                      {/* Username-based routes */}
-                      <Route path="/:username">
-                        <Route index element={<Home />} />
-                        <Route path="resume" element={<Resume />} />
-                        <Route path="post/:id" element={<ViewPost />} />
-                        <Route path="interest/:interest" element={<InterestPage />} />
+              <AIProvider>
+                <RouteGuard>
+                  <Navbar />
+                  <main className="container">
+                    <Suspense fallback={<div>Loading...</div>}>
+                      <Routes>
+                        {/* Redirect root to default username */}
+                        <Route path="/" element={<Navigate to={`/${defaultUsername}`} replace />} />
                         
-                        {/* Protected routes */}
-                        <Route path="create" element={
-                          <ProtectedRoute>
-                            <CreatePost />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="edit/:id" element={
-                          <ProtectedRoute>
-                            <EditPost />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="manage/interests" element={
-                          <ProtectedRoute>
-                            <ManageInterests />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="manage/profile" element={
-                          <ProtectedRoute>
-                            <UserProfile />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="manage/posts" element={
-                          <ProtectedRoute>
-                            <Posts />
-                          </ProtectedRoute>
-                        } />
-                      </Route>
+                        {/* Auth routes - no username needed */}
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/signup" element={<SignUp />} />
+                        
+                        {/* Username-based routes */}
+                        <Route path="/:username">
+                          <Route index element={<Home />} />
+                          <Route path="resume" element={<Resume />} />
+                          <Route path="post/:id" element={<ViewPost />} />
+                          <Route path="interest/:interest" element={<InterestPage />} />
+                          
+                          {/* Protected routes */}
+                          <Route path="create" element={
+                            <ProtectedRoute>
+                              <CreatePost />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="edit/:id" element={
+                            <ProtectedRoute>
+                              <EditPost />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="writer/:id" element={
+                            <ProtectedRoute>
+                              <PostWriter />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="manage/interests" element={
+                            <ProtectedRoute>
+                              <ManageInterests />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="manage/profile" element={
+                            <ProtectedRoute>
+                              <UserProfile />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="manage/posts" element={
+                            <ProtectedRoute>
+                              <Posts />
+                            </ProtectedRoute>
+                          } />
+                        </Route>
 
-                      {/* Catch all route - redirect to default username */}
-                      <Route path="*" element={<Navigate to={`/${defaultUsername}`} replace />} />
-                    </Routes>
-                  </Suspense>
-                </main>
-              </RouteGuard>
+                        {/* Catch all route - redirect to default username */}
+                        <Route path="*" element={<Navigate to={`/${defaultUsername}`} replace />} />
+                      </Routes>
+                    </Suspense>
+                  </main>
+                </RouteGuard>
+              </AIProvider>
             </InterestProvider>
           </ProfileProvider>
         </ThemeProvider>
