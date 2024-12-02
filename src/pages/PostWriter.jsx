@@ -17,9 +17,15 @@ import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { supabase } from '../lib/supabase'
 import IdeationPanel from '../components/ideation/IdeationPanel'
+import ResearchPanel from '../components/research/ResearchPanel'
 
 // Define development steps
 const DEVELOPMENT_STEPS = [
+  { 
+    label: 'Research', 
+    description: 'Research and gather information',
+    component: ResearchPanel
+  },
   { 
     label: 'Ideation', 
     description: 'Generate and refine ideas',

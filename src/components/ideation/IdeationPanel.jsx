@@ -39,24 +39,38 @@ const DEFAULT_SYSTEM_PROMPT = `You are an enthusiastic and insightful brainstorm
 
 Format your response in clear sections, with NO MORE THAN FOUR items per section:
 
-RESEARCH AREAS:
-- Start each area with a dash (-)
-- Focus on key areas that need current data and trends
-- Identify specific questions to research
-- These will be used with Perplexity AI for real-time insights
-
 IDEAS:
 - Start each idea with a dash (-)
 - Focus on concrete concepts and unique angles
 - Include both practical and innovative ideas
+- Each idea should be actionable and well-defined
 
 RELATED TOPICS:
 - Start each topic with a dash (-)
 - Include emerging trends and connected themes
 - Consider both technical and non-technical connections
+- Focus on topics that could expand or complement the main idea
+
+AUDIENCE:
+- Start each segment with a dash (-)
+- Identify key audience groups who would benefit
+- Consider both primary and secondary audiences
+- Include potential reach and impact
+
+CHILD POSTS:
+- Start each post idea with a dash (-)
+- Break down complex aspects into standalone topics
+- Ensure each could be a full post on its own
+- Maintain clear connection to the parent topic
+
+FUTURE POSTS:
+- Start each post idea with a dash (-)
+- Focus on future trends and developments
+- Consider long-term implications
+- Identify emerging opportunities
 
 Be bold and specific in your analysis. Each suggestion should include a brief explanation of its relevance or potential impact.
-Remember: Provide NO MORE THAN FOUR items for each section.`
+Remember: Provide NO MORE THAN FOUR items per section.`
 
 function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
   const [newItem, setNewItem] = useState('')
@@ -109,7 +123,20 @@ function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
             borderRadius: 0.5
           },
           '& ul, & ol': {
-            pl: 2
+            pl: 2,
+            '& li': {
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                left: '-1.5em',
+                top: '0.5em',
+                width: '0.5em',
+                height: '0.5em',
+                backgroundColor: 'text.primary',
+                borderRadius: '50%'
+              }
+            }
           },
           '& blockquote': {
             borderLeft: '4px solid',
@@ -119,11 +146,42 @@ function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
             my: 1
           }
         }}>
-          <ReactMarkdown>{item}</ReactMarkdown>
+          <Box sx={{ position: 'relative' }}>
+            <ReactMarkdown
+              components={{
+                li: ({ node, ...props }) => {
+                  return (
+                    <Box component="li" sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                      <Box {...props} sx={{ flex: 1 }} />
+                      <IconButton
+                        size="small"
+                        onClick={() => setMoveTarget(moveTarget === index ? null : index)}
+                        sx={{ 
+                          mt: -1,
+                          visibility: 'hidden',
+                          '&:hover': {
+                            visibility: 'visible'
+                          }
+                        }}
+                      >
+                        <ArrowForwardIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  )
+                }
+              }}
+            >
+              {item}
+            </ReactMarkdown>
+          </Box>
         </Box>
       )
     }
-    return <ListItemText primary={item} />
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+        <ListItemText primary={item} sx={{ flex: 1 }} />
+      </Box>
+    )
   }
 
   return (
@@ -246,6 +304,7 @@ export default function IdeationPanel({ data, onUpdate }) {
   const [activeTab, setActiveTab] = useState(0)
   const [originalPrompt, setOriginalPrompt] = useState(data?.original || '')
   const [systemPrompt, setSystemPrompt] = useState(data?.system_prompt || DEFAULT_SYSTEM_PROMPT)
+  const [researchPrompt, setResearchPrompt] = useState('')
   const [ideas, setIdeas] = useState(data?.ideas?.ideas || [])
   const [relatedTopics, setRelatedTopics] = useState(data?.ideas?.relatedTopics || [])
   const [audiences, setAudiences] = useState(data?.ideas?.audiences || [])
@@ -256,7 +315,6 @@ export default function IdeationPanel({ data, onUpdate }) {
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState(false)
-  const [researchAreas, setResearchAreas] = useState(data?.ideas?.researchAreas || [])
 
   // Debounced save function
   const debouncedSave = useCallback(
@@ -267,7 +325,6 @@ export default function IdeationPanel({ data, onUpdate }) {
           original: originalPrompt,
           system_prompt: systemPrompt,
           ideas: {
-            researchAreas,
             ideas,
             relatedTopics,
             audiences,
@@ -285,14 +342,14 @@ export default function IdeationPanel({ data, onUpdate }) {
         setSaving(false)
       }
     }, 1000),
-    [originalPrompt, systemPrompt, researchAreas, ideas, relatedTopics, audiences, childPosts, futurePosts]
+    [originalPrompt, systemPrompt, ideas, relatedTopics, audiences, childPosts, futurePosts]
   )
 
   // Auto-save when content changes
   useEffect(() => {
     debouncedSave()
     return () => debouncedSave.cancel()
-  }, [originalPrompt, systemPrompt, researchAreas, ideas, relatedTopics, audiences, childPosts, futurePosts])
+  }, [originalPrompt, systemPrompt, ideas, relatedTopics, audiences, childPosts, futurePosts])
 
   const handlePromptSave = () => {
     setEditingPrompt(false)
@@ -394,48 +451,6 @@ export default function IdeationPanel({ data, onUpdate }) {
       const sections = parseSections(response.text)
       console.log('Parsed sections:', sections)
 
-      // If Perplexity is available, use it for research
-      if (services?.perplexity) {
-        console.log('Starting Perplexity research')
-        
-        // Create a focused research prompt
-        const researchPrompt = `I need comprehensive, factual research about: "${originalPrompt}"
-
-Please focus your research on:
-1. Current State & Latest Developments
-   - What are the most recent developments in this area?
-   - What is the current state of technology/knowledge?
-
-2. Key Statistics & Data
-   - What are the most relevant statistics?
-   - What are the key metrics or measurements?
-
-3. Expert Insights & Market Analysis
-   - What do industry experts say about this?
-   - What are the market trends and predictions?
-
-4. Real-World Examples & Case Studies
-   - What are some notable implementations or examples?
-   - What lessons can be learned from these cases?
-
-Please provide your findings in a clear, bullet-pointed format with citations where possible.
-Focus on verifiable facts and current information rather than speculation.`
-
-        try {
-          const researchResponse = await services.perplexity.generateCompletion(researchPrompt, {
-            temperature: 0.3,
-            maxTokens: 2000
-          })
-          console.log('Research results:', researchResponse.text)
-          
-          // Add research results directly
-          sections.researchAreas = [researchResponse.text]
-        } catch (error) {
-          console.error('Error during research:', error)
-          sections.researchAreas = [`Error conducting research: ${error.message}`]
-        }
-      }
-
       // Update state with new items, removing duplicates
       const updateWithoutDuplicates = (existingItems, newItems) => {
         if (!newItems) return existingItems
@@ -452,18 +467,15 @@ Focus on verifiable facts and current information rather than speculation.`
 
       const updatedIdeas = updateWithoutDuplicates(ideas, sections.ideas)
       const updatedTopics = updateWithoutDuplicates(relatedTopics, sections.relatedTopics)
-      const updatedResearch = updateWithoutDuplicates(researchAreas, sections.researchAreas)
 
       setIdeas(updatedIdeas)
       setRelatedTopics(updatedTopics)
-      setResearchAreas(updatedResearch)
 
       // Save to database with complete data
       await onUpdate({
         original: originalPrompt,
         system_prompt: systemPrompt,
         ideas: {
-          researchAreas: updatedResearch,
           ideas: updatedIdeas,
           relatedTopics: updatedTopics,
           audiences,
@@ -571,6 +583,7 @@ Focus on verifiable facts and current information rather than speculation.`
     await onUpdate({
       original: originalPrompt,
       system_prompt: systemPrompt,
+      research_prompt: researchPrompt,
       ideas: {
         researchAreas,
         ideas,
@@ -584,12 +597,6 @@ Focus on verifiable facts and current information rather than speculation.`
   }
 
   const tabs = [
-    { 
-      label: 'Research', 
-      items: researchAreas, 
-      section: 'researchAreas',
-      empty: 'No research areas yet' 
-    },
     { 
       label: 'Ideas', 
       items: ideas, 
@@ -669,6 +676,21 @@ Focus on verifiable facts and current information rather than speculation.`
               {systemPrompt.split('\n')[0]}...
             </Typography>
           )}
+        </Box>
+
+        {/* Research Focus Section */}
+        <Box sx={{ mt: 2, mb: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Ideation Prompt
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
+            value={researchPrompt}
+            onChange={(e) => setResearchPrompt(e.target.value)}
+            placeholder="Enter any specific aspects or questions you want to focus on..."
+          />
         </Box>
 
         <Button
