@@ -79,6 +79,7 @@ export default function PostWriter() {
   const fetchPost = async () => {
     try {
       setLoading(true)
+      console.log('Fetching post with ID:', id)
       
       // Fetch post data
       const { data: postData, error: postError } = await supabase
@@ -87,7 +88,12 @@ export default function PostWriter() {
         .eq('id', id)
         .single()
 
-      if (postError) throw postError
+      if (postError) {
+        console.error('Error fetching post:', postError)
+        throw postError
+      }
+
+      console.log('Post data:', postData)
 
       // Fetch post development data
       const { data: devData, error: devError } = await supabase
@@ -99,8 +105,11 @@ export default function PostWriter() {
         .single()
 
       if (devError && devError.code !== 'PGRST116') {
+        console.error('Error fetching development data:', devError)
         throw devError
       }
+
+      console.log('Development data:', devData)
 
       // If no development data exists, create initial record
       if (!devData) {
@@ -114,33 +123,20 @@ export default function PostWriter() {
           .select()
           .single()
 
-        if (createError) throw createError
-        
-        setDevelopmentId(newDev.id)
-        setPost({
-          ...postData,
-          development: newDev
-        })
-      } else {
-        // Set active step based on development status
-        if (devData.status) {
-          const stepIndex = DEVELOPMENT_STEPS.findIndex(
-            step => step.label.toLowerCase() === devData.status.toLowerCase()
-          )
-          if (stepIndex !== -1) {
-            setActiveStep(stepIndex)
-          }
+        if (createError) {
+          console.error('Error creating development record:', createError)
+          throw createError
         }
 
+        console.log('Created new development record:', newDev)
+        setDevelopmentId(newDev.id)
+      } else {
         setDevelopmentId(devData.id)
-        setPost({
-          ...postData,
-          development: devData
-        })
       }
+
+      setPost(postData)
     } catch (error) {
-      console.error('Error fetching post:', error)
-      navigate('/')
+      console.error('Error in fetchPost:', error)
     } finally {
       setLoading(false)
     }

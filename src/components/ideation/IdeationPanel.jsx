@@ -24,53 +24,46 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import EditIcon from '@mui/icons-material/Edit'
 import SaveIcon from '@mui/icons-material/Save'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import ReactMarkdown from 'react-markdown'
 import AIServiceSelector from '../AIServiceSelector'
 import { useAI } from '../../services/ai'
 import { debounce } from 'lodash'
 
 // Update the system prompt to be more focused on brainstorming and analysis
-const DEFAULT_SYSTEM_PROMPT = `You are an enthusiastic and insightful brainstorming partner with expertise in technology trends, software development, and business analysis. Your role is to:
+const DEFAULT_SYSTEM_PROMPT = `You are an enthusiastic and insightful ideation partner with expertise in technology trends, software development, and business analysis. Your role is to generate creative and practical ideas related to the given topic. Your responses should be structured and concise.
 
-1. Analyze the given topic from multiple angles: technical, business, societal impact, and future possibilities
-2. Generate up to four innovative ideas for each category
-3. Keep responses focused and impactful
-4. Think both broadly about implications and specifically about practical applications
-
-Format your response in clear sections, with NO MORE THAN FOUR items per section:
+Format your response in these specific sections:
 
 IDEAS:
 - Start each idea with a dash (-)
-- Focus on concrete concepts and unique angles
-- Include both practical and innovative ideas
-- Each idea should be actionable and well-defined
+- Focus on concrete, actionable concepts
+- Include both practical and innovative suggestions
+- Keep each idea clear and well-defined
 
 RELATED TOPICS:
 - Start each topic with a dash (-)
-- Include emerging trends and connected themes
-- Consider both technical and non-technical connections
-- Focus on topics that could expand or complement the main idea
+- List relevant connected themes and concepts
+- Consider technical and non-technical relationships
+- Focus on topics that expand the main idea
 
 AUDIENCE:
 - Start each segment with a dash (-)
-- Identify key audience groups who would benefit
-- Consider both primary and secondary audiences
-- Include potential reach and impact
+- Identify specific groups who would benefit
+- Consider both direct and indirect audiences
+- Include potential impact and reach
 
 CHILD POSTS:
 - Start each post idea with a dash (-)
-- Break down complex aspects into standalone topics
-- Ensure each could be a full post on its own
-- Maintain clear connection to the parent topic
+- Suggest detailed subtopics for deeper exploration
+- Ensure each could be a standalone article
+- Maintain clear connection to main topic
 
 FUTURE POSTS:
 - Start each post idea with a dash (-)
-- Focus on future trends and developments
+- Explore future developments and trends
 - Consider long-term implications
 - Identify emerging opportunities
 
-Be bold and specific in your analysis. Each suggestion should include a brief explanation of its relevance or potential impact.
-Remember: Provide NO MORE THAN FOUR items per section.`
+For each section, provide 2-4 high-quality suggestions. Each item should include a brief explanation of its relevance or potential impact. Keep the focus on generating practical, valuable ideas that can be developed further.`
 
 function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
   const [newItem, setNewItem] = useState('')
@@ -107,82 +100,11 @@ function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
     }
   }
 
-  const renderContent = (item, isResearch) => {
-    if (isResearch) {
-      return (
-        <Box sx={{ 
-          '& pre': { 
-            whiteSpace: 'pre-wrap',
-            backgroundColor: 'background.paper',
-            p: 1,
-            borderRadius: 1
-          },
-          '& code': {
-            backgroundColor: 'background.paper',
-            p: 0.5,
-            borderRadius: 0.5
-          },
-          '& ul, & ol': {
-            pl: 2,
-            '& li': {
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                left: '-1.5em',
-                top: '0.5em',
-                width: '0.5em',
-                height: '0.5em',
-                backgroundColor: 'text.primary',
-                borderRadius: '50%'
-              }
-            }
-          },
-          '& blockquote': {
-            borderLeft: '4px solid',
-            borderColor: 'divider',
-            pl: 2,
-            ml: 0,
-            my: 1
-          }
-        }}>
-          <Box sx={{ position: 'relative' }}>
-            <ReactMarkdown
-              components={{
-                li: ({ node, ...props }) => {
-                  return (
-                    <Box component="li" sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                      <Box {...props} sx={{ flex: 1 }} />
-                      <IconButton
-                        size="small"
-                        onClick={() => setMoveTarget(moveTarget === index ? null : index)}
-                        sx={{ 
-                          mt: -1,
-                          visibility: 'hidden',
-                          '&:hover': {
-                            visibility: 'visible'
-                          }
-                        }}
-                      >
-                        <ArrowForwardIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  )
-                }
-              }}
-            >
-              {item}
-            </ReactMarkdown>
-          </Box>
-        </Box>
-      )
-    }
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-        <ListItemText primary={item} sx={{ flex: 1 }} />
-      </Box>
-    )
-  }
+  const renderContent = (item) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+      <ListItemText primary={item} sx={{ flex: 1 }} />
+    </Box>
+  )
 
   return (
     <Box>
@@ -205,7 +127,7 @@ function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
               }}
             >
               <Box sx={{ width: '100%', pr: 16 }}>
-                {renderContent(item, title === 'Research')}
+                {renderContent(item)}
               </Box>
               <Box
                 sx={{
@@ -302,9 +224,8 @@ function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
 export default function IdeationPanel({ data, onUpdate }) {
   const { getCurrentService, services } = useAI()
   const [activeTab, setActiveTab] = useState(0)
-  const [originalPrompt, setOriginalPrompt] = useState(data?.original || '')
-  const [systemPrompt, setSystemPrompt] = useState(data?.system_prompt || DEFAULT_SYSTEM_PROMPT)
-  const [researchPrompt, setResearchPrompt] = useState('')
+  const [originalPrompt, setOriginalPrompt] = useState('')
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
   const [ideas, setIdeas] = useState(data?.ideas?.ideas || [])
   const [relatedTopics, setRelatedTopics] = useState(data?.ideas?.relatedTopics || [])
   const [audiences, setAudiences] = useState(data?.ideas?.audiences || [])
@@ -359,9 +280,6 @@ export default function IdeationPanel({ data, onUpdate }) {
   const handleItemAdd = (section, item) => {
     console.log('Adding item to section:', section, item)
     switch (section) {
-      case 'researchAreas':
-        setResearchAreas(prev => [...prev, item])
-        break
       case 'ideas':
         setIdeas(prev => [...prev, item])
         break
@@ -384,9 +302,6 @@ export default function IdeationPanel({ data, onUpdate }) {
 
   const handleItemDelete = (section, index) => {
     switch (section) {
-      case 'researchAreas':
-        setResearchAreas(prev => prev.filter((_, i) => i !== index))
-        break
       case 'ideas':
         setIdeas(prev => prev.filter((_, i) => i !== index))
         break
@@ -406,22 +321,21 @@ export default function IdeationPanel({ data, onUpdate }) {
   }
 
   const handleItemMove = (section, index, targetSection) => {
-    // Get the item from the current section
-    const sourceItems = tabs[section].items
-    const item = sourceItems[index]
-    
-    // Remove from current section
-    handleItemDelete(tabs[section].section, index)
-    
     // Map the target section name to the correct section key
     const sectionMap = {
-      'Research': 'researchAreas',
       'Ideas': 'ideas',
       'Related Topics': 'relatedTopics',
       'Audience': 'audiences',
       'Child Posts': 'childPosts',
       'Future Posts': 'futurePosts'
     }
+    
+    // Get the item from the current section
+    const sourceItems = tabs[section].items
+    const item = sourceItems[index]
+    
+    // Remove from current section
+    handleItemDelete(tabs[section].section, index)
     
     // Add to target section using the mapped section key
     const targetKey = sectionMap[targetSection]
@@ -583,9 +497,7 @@ export default function IdeationPanel({ data, onUpdate }) {
     await onUpdate({
       original: originalPrompt,
       system_prompt: systemPrompt,
-      research_prompt: researchPrompt,
       ideas: {
-        researchAreas,
         ideas,
         relatedTopics,
         audiences,
@@ -678,7 +590,7 @@ export default function IdeationPanel({ data, onUpdate }) {
           )}
         </Box>
 
-        {/* Research Focus Section */}
+        {/* Original Prompt Section */}
         <Box sx={{ mt: 2, mb: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
             Ideation Prompt
@@ -687,9 +599,9 @@ export default function IdeationPanel({ data, onUpdate }) {
             fullWidth
             multiline
             rows={2}
-            value={researchPrompt}
-            onChange={(e) => setResearchPrompt(e.target.value)}
-            placeholder="Enter any specific aspects or questions you want to focus on..."
+            value={originalPrompt}
+            onChange={(e) => setOriginalPrompt(e.target.value)}
+            placeholder="Enter your topic for ideation..."
           />
         </Box>
 
