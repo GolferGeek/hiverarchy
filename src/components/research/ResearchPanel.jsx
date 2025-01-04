@@ -24,7 +24,7 @@ import ReactMarkdown from 'react-markdown'
 import AIServiceSelector from '../AIServiceSelector'
 import { useAI } from '../../services/ai'
 import { useAuth } from '../../contexts/AuthContext'
-import { debounce } from 'lodash'
+import debounce from 'lodash/debounce'
 
 const RESEARCH_AGENT_PROMPT = `You are a thorough and methodical research agent focused on gathering comprehensive, factual information.
 
