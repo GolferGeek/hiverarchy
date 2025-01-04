@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useProfile } from '../contexts/ProfileContext'
 import PostCard from './PostCard'
 import MDEditor from '@uiw/react-md-editor'
 import {
@@ -20,19 +21,21 @@ import SearchIcon from '@mui/icons-material/Search'
 
 function InterestPage() {
   const navigate = useNavigate()
-  const { interest: interestName } = useParams()
+  const { interest: interestName, username: routeUsername } = useParams()
   const { user } = useAuth()
-  const defaultUserId = import.meta.env.VITE_DEFAULT_USER
+  const { profile, currentUsername } = useProfile()
   const [interestData, setInterestData] = useState(null)
   const [posts, setPosts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const isOwner = user?.id === defaultUserId
+  const isOwner = user?.id === interestData?.user_id
 
   useEffect(() => {
-    fetchInterest()
-  }, [interestName])
+    if (routeUsername) {
+      fetchInterest()
+    }
+  }, [routeUsername, interestName])
 
   useEffect(() => {
     if (interestData) {
@@ -42,19 +45,68 @@ function InterestPage() {
 
   async function fetchInterest() {
     try {
-      const { data, error } = await supabase
-        .from('interests')
-        .select('*')
-        .eq('name', interestName)
-        .eq('user_id', defaultUserId)
+      console.log('Fetching interest with params:', {
+        username: routeUsername,
+        interestName: interestName
+      })
+
+      // First get the profile id from the username
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('username', routeUsername)
         .single()
 
-      if (error) {
-        setError('Interest not found')
+      if (profileError || !userProfile) {
+        console.error('Profile not found:', profileError)
+        setError('Profile not found')
         setLoading(false)
         return
       }
 
+      console.log('Found profile:', userProfile)
+
+      // First try exact match
+      let { data, error } = await supabase
+        .from('interests')
+        .select('*')
+        .eq('name', interestName)
+        .eq('user_id', userProfile.id)
+        .single()
+
+      if (error) {
+        // If exact match fails, try lowercase
+        console.log('Trying lowercase match for:', interestName.toLowerCase())
+        const { data: lowerData, error: lowerError } = await supabase
+          .from('interests')
+          .select('*')
+          .eq('name', interestName.toLowerCase())
+          .eq('user_id', userProfile.id)
+          .single()
+
+        if (lowerError) {
+          // If both fail, try case-insensitive match
+          console.log('Trying case-insensitive match')
+          const { data: iLikeData, error: iLikeError } = await supabase
+            .from('interests')
+            .select('*')
+            .ilike('name', interestName)
+            .eq('user_id', userProfile.id)
+            .single()
+
+          if (iLikeError) {
+            console.error('Interest not found after all attempts:', iLikeError)
+            setError('Interest not found')
+            setLoading(false)
+            return
+          }
+          data = iLikeData
+        } else {
+          data = lowerData
+        }
+      }
+
+      console.log('Found interest:', data)
       setInterestData(data)
     } catch (error) {
       console.error('Error fetching interest:', error)
@@ -66,11 +118,31 @@ function InterestPage() {
 
   async function fetchPosts() {
     try {
+      // First get the user_id from the profile
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .ilike('username', routeUsername)
+        .single()
+
+      if (profileError || !userProfile) {
+        console.error('Profile not found:', profileError)
+        return
+      }
+
+      console.log('Fetching posts for profile:', userProfile)
+
+      // First fetch the posts
       let query = supabase
         .from('posts')
-        .select('*')
-        .contains('interests', [interestData.name])
-        .eq('user_id', defaultUserId)
+        .select(`
+          *,
+          images (
+            url
+          )
+        `)
+        .eq('user_id', userProfile.id)
+        .contains('interest_names', [interestData.name])
         .is('parent_id', null) // Only fetch top-level posts
         .order('created_at', { ascending: false })
 
@@ -80,12 +152,26 @@ function InterestPage() {
 
       const { data, error } = await query
       if (error) {
+        console.error('Error fetching posts:', error)
         return
       }
 
-      setPosts(data)
+      console.log('Raw posts data:', JSON.stringify(data, null, 2))
+
+      // Add username to each post since we already have it
+      const postsWithUsername = data.map(post => {
+        console.log('Processing post:', post.id)
+        console.log('Post images:', JSON.stringify(post.images, null, 2))
+        return {
+          ...post,
+          username: userProfile.username
+        }
+      })
+
+      console.log('Final posts with username:', JSON.stringify(postsWithUsername, null, 2))
+      setPosts(postsWithUsername || [])
     } catch (error) {
-      // Handle error silently
+      console.error('Error in fetchPosts:', error)
     }
   }
 
@@ -133,9 +219,9 @@ function InterestPage() {
             src={interestData.image_path}
             alt={interestData.name}
             sx={{
-              maxWidth: '100%',
-              height: 'auto',
-              maxHeight: '400px',
+              width: '100%',
+              height: '300px',
+              objectFit: 'cover',
               borderRadius: 2,
               boxShadow: 3,
               mb: 4
@@ -197,7 +283,7 @@ function InterestPage() {
           <Button
             variant="contained"
             size="large"
-            onClick={() => navigate('/create', { state: { interest: interestData } })}
+            onClick={() => navigate(`/${currentUsername}/create`, { state: { interest: interestData } })}
             sx={{
               px: 4,
               py: 1.5,

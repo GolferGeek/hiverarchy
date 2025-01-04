@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import CommentList from '../components/CommentList'
 import ConfirmModal from '../components/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
+import { useProfile } from '../contexts/ProfileContext'
 import {
   Container,
   Typography,
@@ -17,10 +18,14 @@ import {
   CircularProgress,
   Divider,
   Alert,
-  Stack
+  Stack,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material'
-import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
+import { Edit as EditIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material'
 import WriterButton from '../components/WriterButton'
+import RefutationList from '../components/RefutationList'
 
 function ViewPost() {
   const { id } = useParams()
@@ -29,15 +34,29 @@ function ViewPost() {
   const [error, setError] = useState(null)
   const [parentPost, setParentPost] = useState(null)
   const [childPosts, setChildPosts] = useState([])
+  const [commentCount, setCommentCount] = useState(0)
+  const [refutationCount, setRefutationCount] = useState(0)
   const navigate = useNavigate()
   const { user } = useAuth()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const isAuthor = user && post && user.id === post.user_id
   const isChildPost = post && post.arc_id && post.arc_id !== post.id
+  const { currentUsername } = useProfile()
 
   useEffect(() => {
     fetchPost()
   }, [id])
+
+  useEffect(() => {
+    if (post?.id) {
+      fetchPostImages(post.id).then(images => {
+        setPost(prev => ({
+          ...prev,
+          images
+        }))
+      })
+    }
+  }, [post?.id])
 
   useEffect(() => {
     if (post) {
@@ -48,43 +67,48 @@ function ViewPost() {
     }
   }, [post])
 
-  async function fetchPost() {
+  const fetchPost = async () => {
     try {
-      setLoading(true)
-      setError(null)
       const { data, error } = await supabase
         .from('posts')
         .select(`
           *,
-          tags
+          images (
+            url
+          )
         `)
         .eq('id', id)
         .single()
 
       if (error) throw error
-      
-      // Parse tags JSON string and ensure it's an array
-      let parsedTags = [];
-      try {
-        if (data.tags) {
-          const parsed = JSON.parse(data.tags);
-          parsedTags = Array.isArray(parsed) ? parsed : [];
-        }
-      } catch (parseError) {
-        console.error('Error parsing tags:', parseError);
-      }
-      
-      const postWithParsedTags = {
+
+      setPost({
         ...data,
-        tags: parsedTags
-      }
-      
-      setPost(postWithParsedTags)
+        username: currentUsername
+      })
+      setLoading(false)
     } catch (error) {
       console.error('Error fetching post:', error)
-      setError('Failed to load post. Please try again later.')
-    } finally {
+      setError('Failed to load post')
       setLoading(false)
+    }
+  }
+
+  // Fetch images separately if needed
+  const fetchPostImages = async (postId) => {
+    try {
+      const { data, error } = await supabase
+        .from('images')
+        .select('url')
+        .eq('post_id', postId)
+
+      if (error) throw error
+
+      console.log('Fetched images:', data)
+      return data
+    } catch (error) {
+      console.error('Error fetching images:', error)
+      return []
     }
   }
 
@@ -92,12 +116,16 @@ function ViewPost() {
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select('id, title')
+        .select('*')
         .eq('id', parentId)
         .single()
 
       if (error) throw error
-      setParentPost(data)
+
+      setParentPost({
+        ...data,
+        username: currentUsername
+      })
     } catch (error) {
       console.error('Error fetching parent post:', error)
     }
@@ -113,8 +141,12 @@ function ViewPost() {
 
       if (error) throw error
       
-      // Remove duplicates by ID
-      const uniquePosts = data ? Array.from(new Map(data.map(post => [post.id, post])).values()) : []
+      // Add username and remove duplicates
+      const postsWithUsername = data.map(post => ({
+        ...post,
+        username: currentUsername
+      }))
+      const uniquePosts = postsWithUsername ? Array.from(new Map(postsWithUsername.map(post => [post.id, post])).values()) : []
       setChildPosts(uniquePosts)
     } catch (error) {
       console.error('Error fetching child posts:', error)
@@ -173,79 +205,69 @@ function ViewPost() {
       <Paper elevation={3} sx={{ p: 4 }}>
         {/* Post Header */}
         <Box sx={{ mb: 4 }}>
-          {isChildPost && parentPost && (
+          {post.parent_id && parentPost && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                Part of thread: <Link to={`/post/${parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
+                Part of thread: <Link to={`/${parentPost.username}/post/${parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
                   {parentPost.title}
                 </Link>
               </Typography>
             </Box>
           )}
-
-          <Typography variant="h3" component="h1" gutterBottom>
+          <Typography variant="h4" gutterBottom>
             {post.title}
           </Typography>
-
-          {/* Meta Information */}
-          <Box sx={{ mb: 3, color: 'text.secondary' }}>
-            <Typography variant="body2">
-              Posted on {format(new Date(post.created_at), 'MMMM d, yyyy')}
-            </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            {format(new Date(post.created_at), 'MMMM d, yyyy')}
+          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 4, 
+            mt: 2, 
+            mb: 2 
+          }}>
+            <Box sx={{ 
+              flex: 1,
+              p: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1,
+            }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Interests
+              </Typography>
+              {post.interest_names && post.interest_names.map((interest, index) => (
+                <Chip
+                  key={index}
+                  label={interest}
+                  component={Link}
+                  to={`/interest/${interest}`}
+                  clickable
+                  sx={{ mr: 1, mb: 1 }}
+                />
+              ))}
+            </Box>
+            <Box sx={{ 
+              flex: 1,
+              p: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1,
+            }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Tags
+              </Typography>
+              {post.tag_names && post.tag_names.map((tag, index) => (
+                <Chip
+                  key={index}
+                  label={tag}
+                  variant="outlined"
+                  size="small"
+                  sx={{ mr: 1, mb: 1 }}
+                />
+              ))}
+            </Box>
           </Box>
-
-          {/* Categories and Tags */}
-          <Stack direction="row" spacing={4} sx={{ mb: 3 }}>
-            {/* Interests */}
-            {Array.isArray(post.interests) && post.interests.length > 0 && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Categories
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                  {post.interests.map((interest, index) => (
-                    <Chip
-                      key={index}
-                      label={interest}
-                      color="secondary"
-                      sx={{ 
-                        borderRadius: '4px',
-                        fontWeight: 500
-                      }}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-            )}
-
-            {/* Tags */}
-            {Array.isArray(post.tags) && post.tags.length > 0 && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Tags
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                  {post.tags.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      color="primary"
-                      variant="outlined"
-                      sx={{ 
-                        borderRadius: '4px',
-                        '&:hover': {
-                          backgroundColor: 'primary.light',
-                          color: 'white'
-                        }
-                      }}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-            )}
-          </Stack>
-
-          {/* Edit/Delete Buttons */}
           <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
             {isAuthor && (
               <>
@@ -253,7 +275,7 @@ function ViewPost() {
                   variant="contained"
                   color="primary"
                   component={Link}
-                  to={`/create`}
+                  to={`/${currentUsername}/create`}
                   state={{ parentPost: post }}
                 >
                   Create Child Post
@@ -262,7 +284,7 @@ function ViewPost() {
                   variant="outlined"
                   startIcon={<EditIcon />}
                   component={Link}
-                  to={`/edit/${post.id}`}
+                  to={`/${currentUsername}/edit/${post.id}`}
                 >
                   Edit
                 </Button>
@@ -286,8 +308,10 @@ function ViewPost() {
         <Box 
           sx={{ 
             '& img': {
-              maxWidth: '100%',
-              height: 'auto'
+              maxWidth: '400px',
+              maxHeight: '300px',
+              height: 'auto',
+              objectFit: 'contain'
             }
           }}
         >
@@ -307,7 +331,7 @@ function ViewPost() {
                   <Box 
                     key={childPost.id}
                     component={Link}
-                    to={`/post/${childPost.id}`}
+                    to={`/${childPost.username}/post/${childPost.id}`}
                     sx={{
                       textDecoration: 'none',
                       color: 'inherit',
@@ -340,10 +364,34 @@ function ViewPost() {
 
         {/* Comments Section */}
         <Box sx={{ mt: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            Comments
-          </Typography>
-          <CommentList postId={post.id} />
+          <Accordion>
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              aria-controls="comments-content"
+              id="comments-header"
+            >
+              <Typography variant="h5">Comments ({commentCount})</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <CommentList postId={post.id} onCountChange={setCommentCount} />
+            </AccordionDetails>
+          </Accordion>
+        </Box>
+
+        {/* Refutations Section */}
+        <Box sx={{ mt: 4 }}>
+          <Accordion>
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              aria-controls="refutations-content"
+              id="refutations-header"
+            >
+              <Typography variant="h5">Refutations ({refutationCount})</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <RefutationList postId={post.id} onCountChange={setRefutationCount} />
+            </AccordionDetails>
+          </Accordion>
         </Box>
       </Paper>
 

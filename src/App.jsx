@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { InterestProvider } from './contexts/InterestContext'
-import { ProfileProvider } from './contexts/ProfileContext'
+import { ProfileProvider, useProfile } from './contexts/ProfileContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AIProvider } from './services/ai/index.jsx'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
+import Welcome from './components/Welcome'
 import { lazy, Suspense } from 'react'
 import './styles/global.css'
 
@@ -26,34 +27,55 @@ const PostWriter = lazy(() => import('./pages/PostWriter'))
 function RouteGuard({ children }) {
   const { username } = useParams()
   const location = useLocation()
-  const defaultUsername = import.meta.env.VITE_DEFAULT_USERNAME
+  const { user } = useAuth()
+  const { userProfile, loading: profileLoading } = useProfile()
 
-  // Skip redirect for login and signup routes
+  // Skip guard for special routes
   if (location.pathname === '/login' || 
-      location.pathname === '/signup' || 
-      location.pathname === '/') {
+      location.pathname === '/signup') {
     return children
   }
 
-  // Check if the path already starts with a username
-  const pathParts = location.pathname.split('/').filter(Boolean)
-  if (pathParts[0] === defaultUsername) {
+  // If we're still loading the profile, show loading state
+  if (profileLoading) {
     return children
   }
 
-  // If we're not in a username route and not in a special route, redirect
-  if (!username && !location.pathname.startsWith(`/${defaultUsername}`)) {
-    const newPath = `/${defaultUsername}${location.pathname}`
-    console.log('Redirecting to:', newPath)
-    return <Navigate to={newPath} replace />
+  // If logged in and have profile, ensure we're on the user's URL
+  if (user && userProfile?.username) {
+    const pathParts = location.pathname.split('/').filter(Boolean)
+    
+    // If we're on root or login page, or if username doesn't match
+    if (location.pathname === '/' || 
+        location.pathname === '/login' || 
+        pathParts[0] !== userProfile.username) {
+      
+      // Get the path after the username (if any)
+      const remainingPath = pathParts.length > 1 ? `/${pathParts.slice(1).join('/')}` : ''
+      
+      // Construct new path with user's username
+      const newPath = `/${userProfile.username}${remainingPath}`
+      
+      console.log('RouteGuard: Redirecting to:', newPath)
+      return <Navigate to={newPath} replace />
+    }
   }
 
+  // If not logged in and on root, show welcome page
+  if (!user && location.pathname === '/') {
+    return children
+  }
+
+  // If we have a username in the URL, allow access
+  if (username) {
+    return children
+  }
+
+  // For any other case, show the children
   return children
 }
 
 function App() {
-  const defaultUsername = import.meta.env.VITE_DEFAULT_USERNAME
-
   return (
     <BrowserRouter future={{
       v7_startTransition: true,
@@ -73,10 +95,8 @@ function App() {
                   <main className="container">
                     <Suspense fallback={<div>Loading...</div>}>
                       <Routes>
-                        {/* Redirect root to default username */}
-                        <Route path="/" element={<Navigate to={`/${defaultUsername}`} replace />} />
-                        
-                        {/* Auth routes - no username needed */}
+                        {/* Public routes - no username needed */}
+                        <Route path="/" element={<Welcome />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<SignUp />} />
                         
@@ -120,8 +140,8 @@ function App() {
                           } />
                         </Route>
 
-                        {/* Catch all route - redirect to default username */}
-                        <Route path="*" element={<Navigate to={`/${defaultUsername}`} replace />} />
+                        {/* Show welcome page for unknown routes */}
+                        <Route path="*" element={<Welcome />} />
                       </Routes>
                     </Suspense>
                   </main>

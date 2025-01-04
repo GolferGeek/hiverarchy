@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useInterests } from '../contexts/InterestContext'
@@ -13,19 +13,13 @@ export default function Navbar() {
   const { user, signOut } = useAuth()
   const { darkMode, toggleDarkMode } = useTheme()
   const { interests, loading: interestsLoading } = useInterests()
-  const { profile, loading: profileLoading } = useProfile()
-  const { username } = useParams()
-  const defaultUsername = import.meta.env.VITE_DEFAULT_USERNAME
-  const currentUsername = username || defaultUsername
+  const { blogProfile, userProfile, loading: profileLoading, currentUsername } = useProfile()
   const [manageAnchorEl, setManageAnchorEl] = useState(null)
+  const location = useLocation()
 
   // Sort interests by sequence
   const sortedInterests = [...(interests || [])]
     .sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
-
-  if (interestsLoading || profileLoading) {
-    return null
-  }
 
   const handleManageClick = (event) => {
     setManageAnchorEl(event.currentTarget)
@@ -35,57 +29,85 @@ export default function Navbar() {
     setManageAnchorEl(null)
   }
 
+  // Get the active profile (blog profile or user profile)
+  const activeProfile = blogProfile || userProfile
+
+  // Check if we're on the welcome page
+  const isWelcomePage = location.pathname === '/'
+
+  // If we're loading and not on welcome page, don't show navbar
+  if ((interestsLoading || profileLoading || !currentUsername) && !isWelcomePage) {
+    return null
+  }
+
   return (
-    <AppBar position="static" color="primary">
+    <AppBar 
+      position="sticky" 
+      sx={{ 
+        borderRadius: 0,
+        '& .MuiButton-root': {
+          borderRadius: 0
+        }
+      }}
+    >
       <Toolbar>
-        {/* Left section - Brand */}
-        <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+        {/* Left section - Logo */}
+        <Box sx={{ flex: '0 0 auto' }}>
           <Button
             color="inherit"
             component={Link}
-            to={`/${currentUsername}`}
-            sx={{
-              fontFamily: 'monospace',
-              letterSpacing: '.3rem',
+            to={isWelcomePage ? '/' : `/${currentUsername}`}
+            sx={{ 
               textTransform: 'none',
-              fontWeight: 700,
               fontSize: '1.2rem',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              }
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
             }}
           >
-            {profile?.username || currentUsername}
-          </Button>
-          <Button color="inherit" component={Link} to={`/${currentUsername}/resume`}>
-            Resume
+            {!isWelcomePage && activeProfile?.logo && (
+              <Box
+                component="img"
+                src={activeProfile.logo}
+                alt={`${activeProfile.username}'s logo`}
+                sx={{
+                  height: 32,
+                  width: 32,
+                  objectFit: 'contain'
+                }}
+              />
+            )}
+            {isWelcomePage ? 'Hiverarchy' : (activeProfile?.username || 'Hiverarchy')}
           </Button>
         </Box>
 
-        {/* Middle section - Interests */}
-        <Box sx={{ 
-          flex: '1 1 auto', 
-          display: 'flex', 
-          justifyContent: 'center',
-          alignItems: 'center', 
-          gap: 1,
-          mx: 2,
-          overflow: 'auto'
-        }}>
-          {sortedInterests.map((interest) => (
-            <Button
-              key={interest.id}
-              color="inherit"
-              component={Link}
-              to={`/${currentUsername}/interest/${interest.name}`}
-              sx={{
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {interest.title}
-            </Button>
-          ))}
-        </Box>
+        {/* Middle section - Interests (only show if not on welcome page) */}
+        {!isWelcomePage && (
+          <Box sx={{ 
+            flex: '1 1 auto', 
+            display: 'flex', 
+            justifyContent: 'center',
+            alignItems: 'center', 
+            gap: 1,
+            mx: 2,
+            overflow: 'auto'
+          }}>
+            {sortedInterests.map((interest) => (
+              <Button
+                key={interest.id}
+                color="inherit"
+                component={Link}
+                to={`/${currentUsername}/interest/${interest.name}`}
+                sx={{
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {interest.title}
+              </Button>
+            ))}
+          </Box>
+        )}
 
         {/* Right section - Actions */}
         <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -114,21 +136,21 @@ export default function Navbar() {
                   to={`/${currentUsername}/manage/posts`}
                   onClick={handleManageClose}
                 >
-                  Posts
+                  Manage Posts
                 </MenuItem>
                 <MenuItem 
                   component={Link} 
                   to={`/${currentUsername}/manage/profile`}
                   onClick={handleManageClose}
                 >
-                  Profile
+                  Manage Profile
                 </MenuItem>
                 <MenuItem 
                   component={Link} 
                   to={`/${currentUsername}/manage/interests`}
                   onClick={handleManageClose}
                 >
-                  Interests
+                  Manage Interests
                 </MenuItem>
               </Menu>
               <Button color="inherit" onClick={signOut}>
@@ -136,14 +158,9 @@ export default function Navbar() {
               </Button>
             </>
           ) : (
-            <>
-              <Button color="inherit" component={Link} to="/login">
-                Login
-              </Button>
-              <Button color="inherit" component={Link} to="/signup">
-                Sign Up
-              </Button>
-            </>
+            <Button color="inherit" component={Link} to="/login">
+              Login
+            </Button>
           )}
         </Box>
       </Toolbar>

@@ -14,7 +14,7 @@ import {
 function Home() {
   const navigate = useNavigate()
   const { interests, loading: interestsLoading } = useInterests()
-  const { profile, loading: profileLoading } = useProfile()
+  const { profile, loading: profileLoading, currentUsername } = useProfile()
 
   const getImagePath = (interest) => {
     try {
@@ -22,6 +22,10 @@ function Home() {
     } catch (error) {
       return '/images/default.jpg'
     }
+  }
+
+  const handleInterestClick = (interest) => {
+    navigate(`/${currentUsername}/interest/${interest.name}`)
   }
 
   if (interestsLoading || profileLoading) {
@@ -157,7 +161,7 @@ function Home() {
                     transform: 'scale(1.02)'
                   }
                 }}
-                onClick={() => navigate(`/${interest.name}`)}
+                onClick={() => handleInterestClick(interest)}
               >
                 <CardMedia
                   component="img"

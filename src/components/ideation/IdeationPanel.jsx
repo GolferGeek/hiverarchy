@@ -349,61 +349,22 @@ export default function IdeationPanel({ data, onUpdate }) {
 
     try {
       setIsGenerating(true)
-      const service = getCurrentService()
-      
-      // First, generate initial ideas and topics
-      const initialPrompt = `${systemPrompt}\n\nAnalyze this topic and its implications:\n"${originalPrompt}"\n\nPlease provide a comprehensive analysis following the format specified above. Consider both immediate implications and future possibilities.`
-      
-      const response = await service.generateCompletion(initialPrompt, {
-        temperature: 0.8,
+      const service = await getCurrentService()
+      if (!service) {
+        throw new Error('No AI service available')
+      }
+
+      const fullPrompt = `${systemPrompt}\n\nTopic: "${originalPrompt}"`
+
+      const response = await service.generateCompletion(fullPrompt, {
+        temperature: 0.7,
         maxTokens: 2000
       })
 
-      console.log('Received response:', response.text)
-
-      // Parse the initial response
-      const sections = parseSections(response.text)
-      console.log('Parsed sections:', sections)
-
-      // Update state with new items, removing duplicates
-      const updateWithoutDuplicates = (existingItems, newItems) => {
-        if (!newItems) return existingItems
-        const combined = [...existingItems]
-        newItems.forEach(item => {
-          if (!combined.some(existing => 
-            existing.toLowerCase().trim() === item.toLowerCase().trim()
-          )) {
-            combined.push(item)
-          }
-        })
-        return combined
-      }
-
-      const updatedIdeas = updateWithoutDuplicates(ideas, sections.ideas)
-      const updatedTopics = updateWithoutDuplicates(relatedTopics, sections.relatedTopics)
-
-      setIdeas(updatedIdeas)
-      setRelatedTopics(updatedTopics)
-
-      // Save to database with complete data
-      await onUpdate({
-        original: originalPrompt,
-        system_prompt: systemPrompt,
-        ideas: {
-          ideas: updatedIdeas,
-          relatedTopics: updatedTopics,
-          audiences,
-          childPosts,
-          futurePosts
-        }
-      })
-
-      setSaveMessage('Generated and saved new ideas')
-      setSaveError(false)
+      // Process response...
     } catch (error) {
       console.error('Error generating ideas:', error)
-      setSaveMessage('Error generating ideas')
-      setSaveError(true)
+      setError('Failed to generate ideas. Please try again.')
     } finally {
       setIsGenerating(false)
     }

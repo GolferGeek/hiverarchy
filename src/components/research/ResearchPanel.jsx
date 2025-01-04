@@ -119,19 +119,16 @@ export default function ResearchPanel({ data, onUpdate }) {
     debouncedSave()
   }
 
-  const handleGenerate = async () => {
-    if (!originalPrompt.trim()) return
-
+  const generateResearch = async () => {
     try {
       setIsGenerating(true)
-      const service = getCurrentService()
+      const service = await getCurrentService()
+      if (!service) {
+        throw new Error('No AI service available')
+      }
 
-      // Use Perplexity if available, otherwise use current service
-      const researchService = services?.perplexity || service
-      const fullResearchPrompt = `${systemPrompt}\n\nResearch Topic: "${originalPrompt}"\n\nSpecific Focus: ${researchPrompt}`
-
-      const response = await researchService.generateCompletion(fullResearchPrompt, {
-        temperature: 0.3,
+      const response = await service.generateCompletion(RESEARCH_AGENT_PROMPT, {
+        temperature: 0.7,
         maxTokens: 2000
       })
 
@@ -250,7 +247,7 @@ export default function ResearchPanel({ data, onUpdate }) {
 
         <Button
           variant="contained"
-          onClick={handleGenerate}
+          onClick={generateResearch}
           disabled={isGenerating || !originalPrompt.trim()}
           startIcon={isGenerating ? <CircularProgress size={20} /> : <RefreshIcon />}
         >

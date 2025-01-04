@@ -8,25 +8,45 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check active sessions and sets the user
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
     })
 
-    // Listen for changes on auth state
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
     return () => subscription.unsubscribe()
   }, [])
 
+  async function signUp({ email, password }) {
+    return await supabase.auth.signUp({
+      email,
+      password,
+    })
+  }
+
+  async function signIn({ email, password }) {
+    return await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+  }
+
+  async function signOut() {
+    return await supabase.auth.signOut()
+  }
+
   const value = {
-    signUp: (data) => supabase.auth.signUp(data),
-    signIn: (data) => supabase.auth.signInWithPassword(data),
-    signOut: () => supabase.auth.signOut(),
-    user
+    user,
+    loading,
+    signUp,
+    signIn,
+    signOut
   }
 
   return (

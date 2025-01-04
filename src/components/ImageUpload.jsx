@@ -255,44 +255,72 @@ function ImageUpload({
       )}
 
       {existingImages?.length > 0 && (
-        <ImageList sx={{ width: '100%', maxHeight: 400 }} cols={3} rowHeight={200}>
-          {existingImages.map((imageUrl, index) => (
-            <ImageListItem key={imageUrl} sx={{ position: 'relative' }}>
-              <Box
-                sx={{
-                  position: 'relative',
-                  height: '100%',
-                  '&:hover .image-actions': {
-                    opacity: 1,
-                  },
-                }}
-              >
-                <img
-                  src={imageUrl}
-                  alt={`Image ${index + 1}`}
-                  loading="lazy"
-                  style={{ height: '200px', objectFit: 'cover' }}
-                />
+        <ImageList sx={{ width: '100%', maxHeight: 300 }} cols={4} rowHeight={120}>
+          {existingImages.map((image, index) => {
+            // Handle both string URLs and object URLs
+            const imageUrl = typeof image === 'string' ? image : image.url;
+            // Parse JSON string if needed
+            const finalUrl = (() => {
+              try {
+                const parsed = JSON.parse(imageUrl);
+                return Array.isArray(parsed) ? parsed[0] : imageUrl;
+              } catch (e) {
+                return imageUrl;
+              }
+            })();
+            
+            return (
+              <ImageListItem key={finalUrl} sx={{ position: 'relative' }}>
                 <Box
-                  className="image-actions"
                   sx={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    padding: 1,
-                    display: 'flex',
-                    gap: 1,
-                    opacity: 0,
-                    transition: 'opacity 0.2s',
-                    bgcolor: 'rgba(0, 0, 0, 0.5)',
-                    borderRadius: '0 0 0 8px',
+                    position: 'relative',
+                    height: '100%',
+                    '&:hover .image-actions': {
+                      opacity: 1,
+                    },
                   }}
                 >
-                  {showCopyOption && (
-                    <Tooltip title="Copy Markdown">
+                  <img
+                    src={finalUrl}
+                    alt={`Image ${index + 1}`}
+                    loading="lazy"
+                    style={{ height: '120px', width: '120px', objectFit: 'cover' }}
+                  />
+                  <Box
+                    className="image-actions"
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      padding: 0.5,
+                      display: 'flex',
+                      gap: 0.5,
+                      opacity: 0,
+                      transition: 'opacity 0.2s',
+                      bgcolor: 'rgba(0, 0, 0, 0.5)',
+                      borderRadius: '0 0 0 8px',
+                    }}
+                  >
+                    {showCopyOption && (
+                      <Tooltip title="Copy Markdown">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleCopyMarkdown(finalUrl)}
+                          sx={{
+                            color: 'white',
+                            '&:hover': {
+                              bgcolor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                          }}
+                        >
+                          <ContentCopyIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Delete">
                       <IconButton
                         size="small"
-                        onClick={() => handleCopyMarkdown(imageUrl)}
+                        onClick={() => onRemove(image.id || image)}
                         sx={{
                           color: 'white',
                           '&:hover': {
@@ -300,28 +328,14 @@ function ImageUpload({
                           },
                         }}
                       >
-                        <ContentCopyIcon />
+                        <DeleteIcon />
                       </IconButton>
                     </Tooltip>
-                  )}
-                  <Tooltip title="Delete Image">
-                    <IconButton
-                      size="small"
-                      onClick={() => onRemove(imageUrl)}
-                      sx={{
-                        color: 'white',
-                        '&:hover': {
-                          bgcolor: 'rgba(255, 255, 255, 0.2)',
-                        },
-                      }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
+                  </Box>
                 </Box>
-              </Box>
-            </ImageListItem>
-          ))}
+              </ImageListItem>
+            );
+          })}
         </ImageList>
       )}
     </Box>

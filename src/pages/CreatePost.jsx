@@ -17,7 +17,10 @@ import {
   Alert,
   Grid,
   Chip,
-  Stack
+  Stack,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material'
 
 function CreatePost() {
@@ -33,30 +36,43 @@ function CreatePost() {
     title: '',
     content: '',
     excerpt: '',
-    interests: state?.interest ? [state.interest.name] : ['coder'],
-    tags: [],
-    images: [],
-    parent_id: state?.parentPost?.id || null,
-    arc_id: state?.parentPost ? (state.arcId || state.parentPost.id) : null
+    interest_ids: [],
+    interest_names: [],
+    tag_ids: [],
+    tag_names: [],
+    images: []
   })
 
   const availableInterests = [
-    { value: 'coder', label: 'Coder' },
-    { value: 'golfer', label: 'Golfer' },
-    { value: 'mentor', label: 'Mentor' },
-    { value: 'aging', label: 'Aging' }
+    { id: '1c6d9fa6-908b-4e83-8c1e-3baf6571d6d9', value: 'coder', label: 'Coder' },
+    { id: '2a8b7c9d-456e-4f12-9a3b-8c7d6e5f4e3d', value: 'golfer', label: 'Golfer' },
+    { id: '3e4f5c6d-789a-4b1c-9d2e-1f2e3d4c5b6a', value: 'mentor', label: 'Mentor' },
+    { id: '4d5e6f7g-890b-4c2d-ae3f-2g3h4i5j6k7l', value: 'aging', label: 'Aging' }
   ]
 
   useEffect(() => {
+    console.log('Current user:', user)
+    console.log('Default user ID:', defaultUserId)
+    if (!user) {
+      console.log('No user found, redirecting to home')
+      navigate('/')
+      return
+    }
     fetchAllTags()
-  }, [])
+  }, [user, navigate])
 
   async function fetchAllTags() {
     try {
+      // Only fetch if we have a user ID
+      if (!user?.id) {
+        console.log('No user ID available for fetching tags')
+        return
+      }
+
       const { data, error } = await supabase
         .from('tags')
         .select('name')
-        .or(`user_id.eq.${defaultUserId},user_id.eq.${user?.id}`)
+        .eq('user_id', user.id)
         .order('name')
 
       if (error) throw error
@@ -67,12 +83,48 @@ function CreatePost() {
     }
   }
 
-  function handleInterestChange(value) {
+  const handleInterestChange = (interest) => {
     setPost(prev => {
-      if (prev.interests.includes(value)) {
-        return { ...prev, interests: prev.interests.filter(int => int !== value) }
-      } else {
-        return { ...prev, interests: [...prev.interests, value] }
+      const interestId = interest.id
+      const interestLabel = interest.label
+
+      // If interest is already selected, remove it
+      if (prev.interest_names.includes(interestLabel)) {
+        return {
+          ...prev,
+          interest_ids: prev.interest_ids.filter(id => id !== interestId),
+          interest_names: prev.interest_names.filter(name => name !== interestLabel)
+        }
+      }
+
+      // Otherwise, add it
+      return {
+        ...prev,
+        interest_ids: [...prev.interest_ids, interestId],
+        interest_names: [...prev.interest_names, interestLabel]
+      }
+    })
+  }
+
+  const handleTagChange = (tag) => {
+    setPost(prev => {
+      const tagId = tag.id
+      const tagName = tag.name
+
+      // If tag is already selected, remove it
+      if (prev.tag_ids.includes(tagId)) {
+        return {
+          ...prev,
+          tag_ids: prev.tag_ids.filter(id => id !== tagId),
+          tag_names: prev.tag_names.filter(name => name !== tagName)
+        }
+      }
+
+      // Otherwise, add it
+      return {
+        ...prev,
+        tag_ids: [...prev.tag_ids, tagId],
+        tag_names: [...prev.tag_names, tagName]
       }
     })
   }
@@ -91,18 +143,27 @@ function CreatePost() {
   const handleAddTag = async (event) => {
     const trimmedInput = event.target.value.trim().toLowerCase()
     
-    if (trimmedInput && !post.tags.includes(trimmedInput)) {
+    if (trimmedInput && !post.tag_names.includes(trimmedInput)) {
       try {
         // First, add to tags table if it doesn't exist
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('tags')
           .insert([{ 
             name: trimmedInput,
-            user_id: user?.id || defaultUserId 
+            user_id: user?.id
           }])
+          .select()
+          .single()
 
         if (error) throw error
-        setPost(prev => ({ ...prev, tags: [...prev.tags, trimmedInput] }))
+        
+        // Update post with new tag
+        setPost(prev => ({
+          ...prev,
+          tag_ids: [...prev.tag_ids, data.id],
+          tag_names: [...prev.tag_names, data.name]
+        }))
+        
         event.target.value = ''
         await fetchAllTags()
       } catch (error) {
@@ -111,15 +172,36 @@ function CreatePost() {
     }
   }
 
-  const handleTagSelect = (tagName) => {
-    if (!post.tags.includes(tagName)) {
-      setPost(prev => ({ ...prev, tags: [...prev.tags, tagName] }))
+  const handleTagSelect = async (tagName) => {
+    if (!post.tag_names.includes(tagName)) {
+      try {
+        // Get the tag ID from the database
+        const { data, error } = await supabase
+          .from('tags')
+          .select('id')
+          .eq('name', tagName)
+          .single()
+
+        if (error) throw error
+
+        setPost(prev => ({
+          ...prev,
+          tag_ids: [...prev.tag_ids, data.id],
+          tag_names: [...prev.tag_names, tagName]
+        }))
+      } catch (error) {
+        console.error('Error getting tag ID:', error)
+      }
     }
     setTagInput('')
   }
 
   const removeTag = (tagToRemove) => {
-    setPost(prev => ({ ...prev, tags: prev.tags.filter(tag => tag !== tagToRemove) }))
+    setPost(prev => ({
+      ...prev,
+      tag_names: prev.tag_names.filter(tag => tag !== tagToRemove),
+      tag_ids: prev.tag_ids.filter((_, index) => prev.tag_names[index] !== tagToRemove)
+    }))
   }
 
   const handleImageUpload = (uploadedImages) => {
@@ -132,52 +214,68 @@ function CreatePost() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    if (!user) {
+      console.error('No user found during submission')
+      setError('You must be logged in to create a post')
+      navigate('/')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
-      // First, insert the post without arc_id to get its ID
-      const { data: newPost, error: insertError } = await supabase
+      console.log('Submitting post:', post)
+      // Generate new UUID for the post
+      const newId = crypto.randomUUID()
+      console.log('Generated ID:', newId)
+      
+      // Get the username from the user's email
+      const username = user.email.split('@')[0]
+      
+      // First create the post
+      const { error: postError } = await supabase
         .from('posts')
         .insert([{
-          ...post,
+          id: newId,
+          arc_id: state?.parentPost ? state.parentPost.arc_id : newId,
+          parent_id: state?.parentPost ? state.parentPost.id : null,
+          title: post.title,
+          content: post.content,
+          excerpt: post.excerpt,
           user_id: user.id,
-          parent_id: post.parent_id ? parseInt(post.parent_id) : null,
-          arc_id: null // Always set to null initially
+          interest_ids: post.interest_ids,
+          interest_names: post.interest_names,
+          tag_ids: post.tag_ids,
+          tag_names: post.tag_names
         }])
-        .select()
-        .single()
 
-      if (insertError) throw insertError
-
-      // If this is a child post and parent has an arc_id, update this post's arc_id
-      if (post.parent_id) {
-        const { data: parentPost, error: parentError } = await supabase
-          .from('posts')
-          .select('arc_id')
-          .eq('id', parseInt(post.parent_id))
-          .single()
-
-        if (parentError) throw parentError
-
-        // Use parent's arc_id if it exists, otherwise use parent's id as the arc_id
-        const arcId = parentPost.arc_id || parseInt(post.parent_id)
-
-        // Update both this post and parent (if parent doesn't have arc_id set)
-        const { error: updateError } = await supabase
-          .rpc('update_post_arc', { 
-            post_id: newPost.id,
-            parent_post_id: parseInt(post.parent_id),
-            arc_identifier: arcId
-          })
-
-        if (updateError) throw updateError
+      if (postError) {
+        console.error('Supabase error:', postError)
+        throw postError
       }
 
-      // Navigate to the new post's view page
-      navigate(`/post/${newPost.id}`)
+      // Then create image records if there are any
+      if (post.images.length > 0) {
+        const { error: imageError } = await supabase
+          .from('images')
+          .insert(post.images.map(url => ({
+            url,
+            post_id: newId
+          })))
+
+        if (imageError) {
+          console.error('Error saving images:', imageError)
+          // Don't throw here, we still want to navigate to the post
+        }
+      }
+
+      console.log('Post created successfully, navigating to:', `/${username}/post/${newId}`)
+      navigate(`/${username}/post/${newId}`)
     } catch (error) {
-      setError(error.message)
+      console.error('Error creating post:', error)
+      setError('Failed to create post. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -185,7 +283,7 @@ function CreatePost() {
 
   const filteredSuggestions = tagSuggestions.filter(tag => 
     tag.toLowerCase().includes(tagInput.toLowerCase()) && 
-    !post.tags.includes(tag)
+    !post.tag_names.includes(tag)
   )
 
   return (
@@ -217,164 +315,146 @@ function CreatePost() {
 
             <Grid item xs={12}>
               <TextField
+                required
+                fullWidth
                 label="Title"
                 value={post.title}
                 onChange={(e) => setPost(prev => ({ ...prev, title: e.target.value }))}
-                fullWidth
-                required
-                variant="outlined"
+                error={!post.title}
+                helperText={!post.title ? 'Title is required' : ''}
               />
             </Grid>
 
             <Grid item xs={12}>
               <TextField
-                label="Excerpt"
-                value={post.excerpt}
-                onChange={(e) => setPost(prev => ({ ...prev, excerpt: e.target.value }))}
                 fullWidth
+                label="Excerpt"
                 multiline
                 rows={2}
-                variant="outlined"
+                value={post.excerpt}
+                onChange={(e) => setPost(prev => ({ ...prev, excerpt: e.target.value }))}
                 helperText="A brief summary of your post"
               />
             </Grid>
 
             <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
-                Content
-              </Typography>
-              <MarkdownEditor
-                value={post.content}
-                onChange={(value) => setPost(prev => ({ ...prev, content: value }))}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Interests
               </Typography>
-              <FormGroup row>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                 {availableInterests.map((interest) => (
-                  <FormControlLabel
+                  <Chip
                     key={interest.value}
-                    control={
-                      <Checkbox
-                        checked={post.interests.includes(interest.value)}
-                        onChange={() => handleInterestChange(interest.value)}
-                      />
-                    }
                     label={interest.label}
+                    onClick={() => handleInterestChange(interest)}
+                    color={post.interest_names.includes(interest.label) ? 'primary' : 'default'}
+                    variant={post.interest_names.includes(interest.label) ? 'filled' : 'outlined'}
                   />
                 ))}
-              </FormGroup>
+              </Stack>
             </Grid>
 
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Tags
               </Typography>
-              
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Available Tags
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
-                  {tagSuggestions
-                    .filter(tag => !post.tags.includes(tag))
-                    .map((tag) => (
-                      <Chip
-                        key={tag}
-                        label={tag}
-                        onClick={() => handleTagSelect(tag)}
-                        variant="outlined"
-                        size="small"
-                        sx={{ cursor: 'pointer' }}
-                      />
-                    ))}
-                </Stack>
-              </Box>
-
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Selected Tags
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                  {post.tags.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      onDelete={() => removeTag(tag)}
-                      color="primary"
-                      variant="outlined"
-                    />
-                  ))}
-                </Stack>
-              </Box>
-
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Add New Tag
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Previously used tags:
               </Typography>
-              <TextField
-                fullWidth
-                label="New Tag"
-                value={tagInput}
-                onChange={handleTagInputChange}
-                onKeyDown={handleTagInputKeyDown}
-                placeholder="Type a new tag and press Enter"
-                helperText="Press Enter to add a new tag"
-                size="small"
-                sx={{ mt: 2 }}
-              />
-              {tagInput && filteredSuggestions.length > 0 && (
-                <Paper sx={{ mt: 1, maxHeight: 200, overflow: 'auto' }}>
-                  <Stack>
-                    {filteredSuggestions.map((suggestion) => (
-                      <Box
-                        key={suggestion}
-                        sx={{
-                          p: 1,
-                          cursor: 'pointer',
-                          '&:hover': {
-                            bgcolor: 'action.hover'
-                          }
-                        }}
-                        onClick={() => handleTagSelect(suggestion)}
-                      >
-                        <Typography variant="body2">{suggestion}</Typography>
-                      </Box>
-                    ))}
-                  </Stack>
-                </Paper>
-              )}
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                {tagSuggestions.map((tag, index) => (
+                  <Chip
+                    key={index}
+                    label={tag}
+                    onClick={() => handleTagSelect(tag)}
+                    variant="outlined"
+                    color={post.tag_names.includes(tag) ? 'primary' : 'default'}
+                  />
+                ))}
+              </Stack>
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Add tags"
+                  value={tagInput}
+                  onChange={handleTagInputChange}
+                  onKeyDown={handleTagInputKeyDown}
+                  helperText="Press Enter to add a tag"
+                />
+                {filteredSuggestions.length > 0 && tagInput && (
+                  <Paper sx={{ mt: 1, maxHeight: 200, overflow: 'auto' }}>
+                    <List dense>
+                      {filteredSuggestions.map((suggestion, index) => (
+                        <ListItem
+                          key={index}
+                          button
+                          onClick={() => handleTagSelect(suggestion)}
+                        >
+                          <ListItemText primary={suggestion} />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Paper>
+                )}
+              </Box>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                {post.tag_names.map((tag, index) => (
+                  <Chip
+                    key={index}
+                    label={tag}
+                    onDelete={() => removeTag(tag)}
+                  />
+                ))}
+              </Stack>
             </Grid>
 
             <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Content
+              </Typography>
+              <TextField
+                required
+                fullWidth
+                multiline
+                rows={10}
+                value={post.content}
+                onChange={(e) => setPost(prev => ({ ...prev, content: e.target.value }))}
+                error={!post.content}
+                helperText={!post.content ? 'Content is required' : ''}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Images
               </Typography>
-              <ImageUpload 
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Tip: Hover over an uploaded image and click the "Copy" icon to get the markdown code for embedding the image in your post.
+              </Typography>
+              <ImageUpload
                 onUpload={handleImageUpload}
                 onRemove={handleRemoveImage}
                 existingImages={post.images}
+                bucket="post-images"
+                folder="post-images"
+                showCopyOption={true}
               />
             </Grid>
 
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(-1)}
+                >
+                  Cancel
+                </Button>
                 <Button
                   type="submit"
                   variant="contained"
-                  color="primary"
-                  disabled={loading}
+                  disabled={loading || !post.title || !post.content}
                 >
                   {loading ? 'Creating...' : 'Create Post'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => navigate('/')}
-                  disabled={loading}
-                >
-                  Cancel
                 </Button>
               </Box>
             </Grid>

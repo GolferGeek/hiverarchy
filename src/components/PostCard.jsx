@@ -23,11 +23,20 @@ function PostCard({ post, onDelete, showInterest = true }) {
   }
 
   useEffect(() => {
+    console.log('Post data in PostCard:', post)
+    // First try to get image from post.images
+    if (post.images && post.images.length > 0 && post.images[0].url) {
+      setFirstImage(post.images[0].url)
+      return
+    }
+
+    // If no images array, try to extract from content
     const contentImage = extractFirstImageFromContent(post.content)
     if (contentImage) {
+      console.log('Found image in content:', contentImage)
       setFirstImage(contentImage)
     }
-  }, [post.content])
+  }, [post.content, post.images])
 
   async function handleDelete() {
     try {
@@ -59,7 +68,7 @@ function PostCard({ post, onDelete, showInterest = true }) {
   }
 
   const getDefaultImage = () => {
-    const category = post.interests?.[0]?.toLowerCase()
+    const category = post.interest_names?.[0]?.toLowerCase()
     switch(category) {
       case 'coder':
         return '/images/coder.jpg'
@@ -93,7 +102,16 @@ function PostCard({ post, onDelete, showInterest = true }) {
           {/* Thumbnail */}
           <Box
             component="img"
-            src={firstImage || getDefaultImage()}
+            src={(() => {
+              const imageUrl = post.images?.[0]?.url;
+              console.log('Image URL:', imageUrl);
+              try {
+                const parsedUrls = JSON.parse(imageUrl);
+                return parsedUrls[0] || getDefaultImage();
+              } catch (e) {
+                return getDefaultImage();
+              }
+            })()}
             alt={post.title}
             sx={{
               width: 150,
@@ -114,7 +132,7 @@ function PostCard({ post, onDelete, showInterest = true }) {
               <Typography 
                 variant="h6" 
                 component={Link} 
-                to={`/post/${post.id}`}
+                to={`/${post.username}/post/${post.id}`}
                 sx={{ 
                   textDecoration: 'none',
                   color: 'inherit',
@@ -127,11 +145,11 @@ function PostCard({ post, onDelete, showInterest = true }) {
               </Typography>
               
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 0.5 }}>
-                {showInterest && post.interests && (
+                {showInterest && post.interest_names && (
                   <Stack direction="row" spacing={1}>
-                    {post.interests.map(interest => (
+                    {post.interest_names.map((interest, index) => (
                       <Chip
-                        key={interest}
+                        key={index}
                         label={interest}
                         size="small"
                         color="primary"
@@ -150,9 +168,9 @@ function PostCard({ post, onDelete, showInterest = true }) {
             </Box>
 
             {/* Tags */}
-            {Array.isArray(post.tags) && post.tags.length > 0 && (
+            {Array.isArray(post.tag_names) && post.tag_names.length > 0 && (
               <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 2, flexWrap: 'wrap', gap: 1 }}>
-                {post.tags.map((tag, index) => (
+                {post.tag_names.map((tag, index) => (
                   <Chip
                     key={index}
                     label={tag}

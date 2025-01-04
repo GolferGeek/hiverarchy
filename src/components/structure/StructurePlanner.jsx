@@ -59,7 +59,10 @@ export default function StructurePlanner({ ideas, onUpdate }) {
   const generateInitialStructure = async () => {
     try {
       setLoading(true)
-      const service = getCurrentService()
+      const service = await getCurrentService()
+      if (!service) {
+        throw new Error('No AI service available')
+      }
 
       const prompt = `Please analyze these ideas and create a well-structured outline for an article:
 

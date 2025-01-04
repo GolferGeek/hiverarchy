@@ -38,7 +38,8 @@ function ManageInterests() {
     title: '',
     description: '',
     image_path: '',
-    content: ''
+    content: '',
+    name: ''
   })
 
   useEffect(() => {
@@ -78,6 +79,7 @@ function ManageInterests() {
       const { data, error } = await supabase
         .from('interests')
         .select('*')
+        .eq('user_id', user.id)
         .order('title')
 
       if (error) throw error
@@ -96,7 +98,8 @@ function ManageInterests() {
           ? JSON.stringify(interest.description, null, 2)
           : interest.description || '',
         image_path: interest.image_path || '',
-        content: interest.content || ''
+        content: interest.content || '',
+        name: interest.name || ''
       })
     } else {
       setEditingInterest(null)
@@ -104,7 +107,8 @@ function ManageInterests() {
         title: '',
         description: '',
         image_path: '',
-        content: ''
+        content: '',
+        name: ''
       })
     }
     setOpen(true)
@@ -117,7 +121,8 @@ function ManageInterests() {
       title: '',
       description: '',
       image_path: '',
-      content: ''
+      content: '',
+      name: ''
     })
   }
 
@@ -157,7 +162,8 @@ function ManageInterests() {
       const submissionData = {
         ...formData,
         description: formData.description,
-        user_id: user?.id || null
+        name: formData.name || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        user_id: user.id
       }
 
       if (editingInterest) {
@@ -168,9 +174,16 @@ function ManageInterests() {
 
         if (error) throw error
       } else {
+        // Generate a new UUID for the interest
+        const newId = crypto.randomUUID()
+        
         const { error } = await supabase
           .from('interests')
-          .insert([submissionData])
+          .insert([{
+            ...submissionData,
+            id: newId,
+            arcid: newId // Set arcid same as id for root interests
+          }])
 
         if (error) throw error
       }
@@ -185,17 +198,110 @@ function ManageInterests() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this interest?')) {
       try {
-        const { error } = await supabase
+        console.log('Attempting to delete interest:', id)
+        console.log('Current user:', user.id)
+        
+        // First verify the interest exists and belongs to the user
+        const { data: existingInterest, error: fetchError } = await supabase
+          .from('interests')
+          .select('*')
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .single()
+
+        console.log('Existing interest:', existingInterest)
+        if (fetchError) {
+          console.error('Error fetching interest:', fetchError)
+          return
+        }
+
+        // Then delete it
+        const { error: deleteError } = await supabase
           .from('interests')
           .delete()
           .eq('id', id)
+          .eq('user_id', user.id)
 
-        if (error) throw error
+        if (deleteError) {
+          console.error('Error deleting interest:', deleteError)
+          return
+        }
+
+        console.log('Interest deleted successfully')
         fetchInterests()
       } catch (error) {
-        console.error('Error deleting interest:', error)
+        console.error('Error in delete process:', error)
       }
     }
+  }
+
+  const createInitialInterests = async () => {
+    const initialInterests = [
+      {
+        title: 'Coding Journey',
+        description: JSON.stringify({
+          sections: [
+            { title: 'Near the metal', items: ['Assembler', 'C++'] },
+            { title: 'Business Developer', items: ['Power Builder', 'VB', 'C#', '.NET', 'SS(RAI)S', 'Angular'] },
+            { title: 'Semi-Retirement', items: ['React', 'AI', 'Mentoring'] }
+          ]
+        }),
+        image_path: '/images/default.jpg',
+        name: 'coding',
+        sequence: 1,
+        content: '# Coding Journey\n\nFrom assembly language to modern web development, my journey in software development spans decades of technological evolution.'
+      },
+      {
+        title: 'Golf Adventures',
+        description: JSON.stringify({
+          text: 'Sharing golf experiences, tips, and achievements'
+        }),
+        image_path: '/images/default.jpg',
+        name: 'golf',
+        sequence: 2,
+        content: '# Golf Adventures\n\nExploring the game of golf, sharing experiences, and documenting the journey of improvement.'
+      },
+      {
+        title: 'Mentorship',
+        description: JSON.stringify({
+          text: 'Guiding and supporting others in their journey'
+        }),
+        image_path: '/images/default.jpg',
+        name: 'mentoring',
+        sequence: 3,
+        content: '# Mentorship\n\nSharing knowledge and experience to help others grow in their careers and personal development.'
+      },
+      {
+        title: "Life's Journey",
+        description: JSON.stringify({
+          text: 'Insights and reflections on the aging process'
+        }),
+        image_path: '/images/default.jpg',
+        name: 'aging',
+        sequence: 4,
+        content: "# Life's Journey\n\nReflections on aging, personal growth, and the continuous process of learning and adaptation."
+      }
+    ]
+
+    for (const interest of initialInterests) {
+      try {
+        const newId = crypto.randomUUID()
+        const { error } = await supabase
+          .from('interests')
+          .insert([{
+            ...interest,
+            id: newId,
+            arcid: newId, // Set arcid same as id for root interests
+            user_id: user.id
+          }])
+
+        if (error) throw error
+      } catch (error) {
+        console.error('Error creating interest:', error)
+      }
+    }
+
+    fetchInterests()
   }
 
   return (
@@ -204,14 +310,23 @@ function ManageInterests() {
         <Typography variant="h4" component="h1">
           Manage Interests
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddCircleOutlineOutlinedIcon />}
-          onClick={() => handleOpen()}
-        >
-          Add Interest
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={createInitialInterests}
+          >
+            Create Initial Interests
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddCircleOutlineOutlinedIcon />}
+            onClick={() => handleOpen()}
+          >
+            Add Interest
+          </Button>
+        </Box>
       </Box>
 
       <TableContainer component={Paper}>
@@ -276,6 +391,17 @@ function ManageInterests() {
                 onChange={handleChange}
                 fullWidth
                 margin="normal"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                name="name"
+                label="URL Name (optional)"
+                value={formData.name}
+                onChange={handleChange}
+                fullWidth
+                margin="normal"
+                helperText="Leave blank to auto-generate from title"
               />
             </Grid>
             <Grid item xs={12}>

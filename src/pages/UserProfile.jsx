@@ -8,18 +8,25 @@ import { useAI } from '../services/ai/index.jsx'
 const UserProfile = () => {
   const [username, setUsername] = useState('')
   const [resume, setResume] = useState('')
-  const [logo, setLogo] = useState('')
+  const [logo, setLogo] = useState(null)
   const [tagline, setTagline] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [apiOpenai, setApiOpenai] = useState('')
   const [apiAnthropic, setApiAnthropic] = useState('')
-  const [apiGrok2, setApiGrok2] = useState('')
+  const [apiGrok, setApiGrok] = useState('')
+  const [apiPerplexity, setApiPerplexity] = useState('')
   const { loadServices } = useAI()
 
   useEffect(() => {
     getProfile()
   }, [])
+
+  const getFullLogoUrl = (filename) => {
+    if (!filename) return null
+    if (filename.startsWith('http')) return filename
+    return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profile_logos/${filename}`
+  }
 
   const getProfile = async () => {
     try {
@@ -28,7 +35,7 @@ const UserProfile = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('username, resume, logo, tagline, api-openai, api-anthropic, api-grok2')
+        .select('*')
         .eq('id', user.id)
         .single()
 
@@ -37,11 +44,12 @@ const UserProfile = () => {
       if (data) {
         setUsername(data.username || '')
         setResume(data.resume || '')
-        setLogo(data.logo || '')
+        setLogo(data.logo ? getFullLogoUrl(data.logo) : null)
         setTagline(data.tagline || '')
-        setApiOpenai(data['api-openai'] || '')
-        setApiAnthropic(data['api-anthropic'] || '')
-        setApiGrok2(data['api-grok2'] || '')
+        setApiOpenai(data.api_openai || '')
+        setApiAnthropic(data.api_anthropic || '')
+        setApiGrok(data.api_grok || '')
+        setApiPerplexity(data.api_perplexity || '')
       }
     } catch (error) {
       console.error('Error fetching profile:', error.message)
@@ -51,12 +59,12 @@ const UserProfile = () => {
 
   const handleLogoUpload = (uploadedImages) => {
     if (uploadedImages && uploadedImages.length > 0) {
-      setLogo(uploadedImages[0])
+      setLogo(getFullLogoUrl(uploadedImages[0]))
     }
   }
 
   const handleLogoRemove = async () => {
-    setLogo('')
+    setLogo(null)
   }
 
   const updateProfile = async () => {
@@ -65,17 +73,23 @@ const UserProfile = () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No user found')
 
-      console.log('Updating profile with Grok2 API key:', apiGrok2)
+      // Extract filename from full URL for storage
+      let logoFilename = null
+      if (logo) {
+        const matches = logo.match(/\/([^/]+)$/)
+        logoFilename = matches ? matches[1] : null
+      }
 
       const updates = {
         id: user.id,
         username,
         resume,
-        logo,
+        logo: logoFilename,  // Store just the filename
         tagline,
-        'api-openai': apiOpenai,
-        'api-anthropic': apiAnthropic,
-        'api-grok2': apiGrok2,
+        'api_openai': apiOpenai,
+        'api_anthropic': apiAnthropic,
+        'api_grok': apiGrok,
+        'api_perplexity': apiPerplexity,
         updated_at: new Date().toISOString()
       }
 
@@ -179,8 +193,17 @@ const UserProfile = () => {
             margin="normal"
             fullWidth
             label="Grok2 API Key"
-            value={apiGrok2}
-            onChange={(e) => setApiGrok2(e.target.value)}
+            value={apiGrok}
+            onChange={(e) => setApiGrok(e.target.value)}
+            type="password"
+            disabled={loading}
+          />
+          <TextField
+            margin="normal"
+            fullWidth
+            label="Perplexity API Key"
+            value={apiPerplexity}
+            onChange={(e) => setApiPerplexity(e.target.value)}
             type="password"
             disabled={loading}
           />

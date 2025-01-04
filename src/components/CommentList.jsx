@@ -14,7 +14,7 @@ import {
 } from '@mui/material'
 import { Send as SendIcon } from '@mui/icons-material'
 
-function CommentList({ postId }) {
+function CommentList({ postId, onCountChange }) {
   const { user } = useAuth()
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
@@ -26,21 +26,53 @@ function CommentList({ postId }) {
     fetchComments()
   }, [postId])
 
+  useEffect(() => {
+    if (onCountChange) {
+      onCountChange(comments.length)
+    }
+  }, [comments.length, onCountChange])
+
   async function fetchComments() {
     try {
       setError(null)
-      const { data, error } = await supabase
+      const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select('*, profiles(email)')
+        .select(`
+          *,
+          profile:profiles (
+            id,
+            username,
+            email
+          )
+        `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true })
 
-      if (error) throw error
+      if (commentsError) throw commentsError
       
-      setComments(data.map(comment => ({
-        ...comment,
-        user_email: comment.profiles?.email
-      })))
+      // Organize comments into a tree structure
+      const commentMap = new Map()
+      const rootComments = []
+
+      commentsData.forEach(comment => {
+        comment.user_email = comment.profile?.email
+        comment.username = comment.profile?.username
+        comment.replies = []
+        commentMap.set(comment.id, comment)
+      })
+
+      commentsData.forEach(comment => {
+        if (comment.parent_id) {
+          const parent = commentMap.get(comment.parent_id)
+          if (parent) {
+            parent.replies.push(comment)
+          }
+        } else {
+          rootComments.push(comment)
+        }
+      })
+
+      setComments(rootComments)
     } catch (error) {
       console.error('Error fetching comments:', error)
       setError('Failed to load comments. Please try again.')
@@ -63,7 +95,7 @@ function CommentList({ postId }) {
           {
             content: newComment.trim(),
             post_id: postId,
-            user_id: user.id
+            profile_id: user.id
           }
         ])
 
@@ -96,6 +128,44 @@ function CommentList({ postId }) {
     }
   }
 
+  const handleReply = async (parentId, content) => {
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .insert([
+          {
+            content: content.trim(),
+            post_id: postId,
+            profile_id: user.id,
+            parent_id: parentId
+          }
+        ])
+
+      if (error) throw error
+
+      await fetchComments()
+    } catch (error) {
+      console.error('Error adding reply:', error)
+      setError('Failed to add reply. Please try again.')
+    }
+  }
+
+  const renderComments = (commentList, depth = 0) => {
+    return commentList.map(comment => (
+      <Box key={comment.id}>
+        <Comment
+          comment={comment}
+          onDelete={handleDelete}
+          onReply={handleReply}
+          depth={depth}
+        />
+        {comment.replies && comment.replies.length > 0 && (
+          renderComments(comment.replies, depth + 1)
+        )}
+      </Box>
+    ))
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -106,10 +176,6 @@ function CommentList({ postId }) {
 
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h6" gutterBottom>
-        Comments ({comments.length})
-      </Typography>
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -190,13 +256,7 @@ function CommentList({ postId }) {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {comments.length > 0 ? (
-          comments.map(comment => (
-            <Comment
-              key={comment.id}
-              comment={comment}
-              onDelete={handleDelete}
-            />
-          ))
+          renderComments(comments)
         ) : (
           <Typography color="text.secondary" align="center">
             No comments yet. Be the first to comment!

@@ -12,62 +12,100 @@ export function AIProvider({ children }) {
   const { user } = useAuth()
   const [currentService, setCurrentService] = useState('')
   const [services, setServices] = useState({})
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState(null)
 
   useEffect(() => {
     if (user?.id) {
-      loadAPIKeys()
+      loadProfile()
     }
   }, [user?.id])
 
-  const loadAPIKeys = async () => {
+  const loadProfile = async () => {
     try {
       setLoading(true)
-      const { data: profile, error } = await supabase
+      console.log('Loading profile for user:', user.id)
+      
+      const { data, error } = await supabase
         .from('profiles')
-        .select('"api-openai", "api-anthropic", "api-grok2", "api-perplexity"')
+        .select('*')
         .eq('id', user.id)
         .single()
 
-      if (error) throw error
-
-      const newServices = {}
-      
-      if (profile['api-openai']) {
-        newServices.openai = new OpenAIService(profile['api-openai'])
-      }
-      if (profile['api-anthropic']) {
-        newServices.anthropic = new AnthropicService(profile['api-anthropic'])
-      }
-      if (profile['api-grok2']) {
-        newServices.grok = new GrokService(profile['api-grok2'])
-      }
-      if (profile['api-perplexity']) {
-        newServices.perplexity = new PerplexityService(profile['api-perplexity'])
+      if (error) {
+        console.log('Error or no profile found:', error)
+        return
       }
 
-      setServices(newServices)
-      
-      // Set first available service if none is selected
-      if (!currentService && Object.keys(newServices).length > 0) {
-        setCurrentService(Object.keys(newServices)[0])
-      }
+      console.log('Found existing profile:', data)
+      setProfile(data)
     } catch (error) {
-      console.error('Error loading API keys:', error)
+      console.error('Error in loadProfile:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const getCurrentService = () => {
-    if (!currentService || !services[currentService]) {
-      const firstAvailable = Object.keys(services)[0]
-      if (firstAvailable) {
-        setCurrentService(firstAvailable)
-        return services[firstAvailable]
+  const initializeService = async (serviceType) => {
+    if (!profile) return null
+
+    try {
+      switch (serviceType) {
+        case 'openai':
+          if (profile.api_openai && !services.openai) {
+            const OpenAIService = (await import('./openai')).OpenAIService
+            return new OpenAIService(profile.api_openai)
+          }
+          break
+        case 'anthropic':
+          if (profile.api_anthropic && !services.anthropic) {
+            const AnthropicService = (await import('./anthropic')).AnthropicService
+            return new AnthropicService(profile.api_anthropic)
+          }
+          break
+        case 'grok':
+          if (profile.api_grok && !services.grok) {
+            const GrokService = (await import('./grok')).GrokService
+            return new GrokService(profile.api_grok)
+          }
+          break
+        case 'perplexity':
+          if (profile.api_perplexity && !services.perplexity) {
+            const PerplexityService = (await import('./perplexity')).PerplexityService
+            return new PerplexityService(profile.api_perplexity)
+          }
+          break
+      }
+    } catch (error) {
+      console.error(`Error initializing ${serviceType} service:`, error)
+    }
+    return null
+  }
+
+  const getCurrentService = async () => {
+    if (!currentService) {
+      // Try to initialize first available service
+      for (const serviceType of ['openai', 'anthropic', 'grok', 'perplexity']) {
+        const service = await initializeService(serviceType)
+        if (service) {
+          setServices(prev => ({ ...prev, [serviceType]: service }))
+          setCurrentService(serviceType)
+          return service
+        }
       }
       return null
     }
+
+    // Initialize the current service if not already initialized
+    if (!services[currentService]) {
+      const service = await initializeService(currentService)
+      if (service) {
+        setServices(prev => ({ ...prev, [currentService]: service }))
+        return service
+      }
+      return null
+    }
+
     return services[currentService]
   }
 
@@ -77,7 +115,7 @@ export function AIProvider({ children }) {
     services,
     loading,
     getCurrentService,
-    reloadServices: loadAPIKeys
+    reloadProfile: loadProfile
   }
 
   return <AIContext.Provider value={value}>{children}</AIContext.Provider>
