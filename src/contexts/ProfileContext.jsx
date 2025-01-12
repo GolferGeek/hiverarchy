@@ -19,7 +19,7 @@ export function ProfileProvider({ children }) {
   const location = useLocation()
 
   const getFullLogoUrl = (filename) => {
-    if (!filename || filename === 'null' || filename === 'undefined') return '/images/default.jpg'
+    if (!filename || filename === 'null' || filename === 'undefined') return '/images/gg-logo.jpg'
     if (filename.startsWith('http')) return filename
     if (filename.startsWith('data:')) return filename
     return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profile_logos/${filename}`

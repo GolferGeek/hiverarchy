@@ -14,7 +14,7 @@ import {
 function Home() {
   const navigate = useNavigate()
   const { interests, loading: interestsLoading } = useInterests()
-  const { profile, loading: profileLoading, currentUsername, getFullLogoUrl } = useProfile()
+  const { blogProfile, loading: profileLoading, currentUsername, getFullLogoUrl } = useProfile()
 
   const getImagePath = (interest) => {
     try {
@@ -75,11 +75,11 @@ function Home() {
               }
             }}>
               <img 
-                src={getFullLogoUrl(profile?.logo)}
-                alt={profile?.site_name || 'Site Logo'}
+                src={getFullLogoUrl(blogProfile?.logo)}
+                alt={blogProfile?.site_name || 'Site Logo'}
                 onError={(e) => {
                   console.log('Logo load error, using default')
-                  e.target.src = '/images/default.jpg'
+                  e.target.src = '/images/gg-logo.jpg'
                 }}
               />
             </Box>
@@ -97,7 +97,7 @@ function Home() {
                   fontSize: { xs: '2.5rem', md: '3.5rem' }
                 }}
               >
-                {profile?.site_name || 'Welcome'}
+                {blogProfile?.site_name || 'Welcome'}
               </Typography>
               <Typography 
                 variant="h5" 
@@ -109,7 +109,7 @@ function Home() {
                   lineHeight: 1.4
                 }}
               >
-                {profile?.tagline || 'Exploring ideas and sharing experiences'}
+                {blogProfile?.tagline || 'Exploring ideas and sharing experiences'}
               </Typography>
             </Box>
           </Box>

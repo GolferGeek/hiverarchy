@@ -28,11 +28,19 @@ const RouteGuard = ({ children }) => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const params = useParams()
 
   useEffect(() => {
-    if (!user && location.pathname !== '/') {
-      const newPath = '/'
-      navigate(newPath)
+    // Allow public routes: welcome page, login, signup, and viewing user blogs
+    const publicPaths = ['/', '/login', '/signup']
+    const isPublicPath = publicPaths.includes(location.pathname) || 
+                        location.pathname.match(/^\/[^/]+$/) || // User's blog home
+                        location.pathname.match(/^\/[^/]+\/post\/[^/]+$/) || // Viewing a post
+                        location.pathname.match(/^\/[^/]+\/interest\/[^/]+$/) || // Interest page
+                        location.pathname.match(/^\/[^/]+\/resume$/) // Resume page
+
+    if (!user && !isPublicPath) {
+      navigate('/')
     }
   }, [user, location, navigate])
 

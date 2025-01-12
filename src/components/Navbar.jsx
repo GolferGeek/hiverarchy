@@ -44,10 +44,6 @@ export default function Navbar() {
   // Get the full logo URL - ensure we're getting it from the active profile
   const logoUrl = isWelcomePage ? getFullLogoUrl(blogProfile?.logo) : getFullLogoUrl(activeProfile?.logo)
 
-  // Debug log to check what we're getting
-  console.log('Blog Profile:', blogProfile)
-  console.log('Logo URL:', logoUrl)
-
   return (
     <AppBar 
       position="sticky" 
@@ -69,7 +65,7 @@ export default function Navbar() {
           <Button
             color="inherit"
             component={Link}
-            to={isWelcomePage ? '/' : `/${currentUsername}`}
+            to={isWelcomePage ? '/' : `/${blogProfile?.username}`}
             sx={{ 
               textTransform: 'none',
               fontSize: '1.2rem',
@@ -82,7 +78,7 @@ export default function Navbar() {
             <Box
               component="img"
               src={logoUrl}
-              alt={isWelcomePage ? 'Hiverarchy logo' : `${activeProfile?.username}'s logo`}
+              alt={isWelcomePage ? 'Hiverarchy logo' : `${blogProfile?.username}'s logo`}
               sx={{
                 height: 32,
                 width: 32,
@@ -90,11 +86,10 @@ export default function Navbar() {
                 borderRadius: '4px'
               }}
               onError={(e) => {
-                console.log('Logo load error, using default')
                 e.target.src = '/images/default.jpg'
               }}
             />
-            {isWelcomePage ? 'Hiverarchy' : (activeProfile?.username || 'Hiverarchy')}
+            {isWelcomePage ? 'Hiverarchy' : (blogProfile?.username || 'Hiverarchy')}
           </Button>
           
           {/* Resume Link - Only show if resume exists and not on welcome page */}
@@ -102,7 +97,7 @@ export default function Navbar() {
             <Button
               color="inherit"
               component={Link}
-              to={`/${currentUsername}/resume`}
+              to={`/${blogProfile?.username}/resume`}
               startIcon={<DescriptionIcon />}
               size="small"
               sx={{ 
@@ -132,7 +127,7 @@ export default function Navbar() {
                 key={interest.id}
                 color="inherit"
                 component={Link}
-                to={`/${currentUsername}/interest/${interest.name}`}
+                to={`/${blogProfile?.username}/interest/${interest.name}`}
                 sx={{
                   whiteSpace: 'nowrap'
                 }}
@@ -168,21 +163,21 @@ export default function Navbar() {
               >
                 <MenuItem 
                   component={Link} 
-                  to={`/${currentUsername}/manage/posts`}
+                  to={`/${blogProfile?.username}/manage/posts`}
                   onClick={handleManageClose}
                 >
                   Manage Posts
                 </MenuItem>
                 <MenuItem 
                   component={Link} 
-                  to={`/${currentUsername}/manage/profile`}
+                  to={`/${blogProfile?.username}/manage/profile`}
                   onClick={handleManageClose}
                 >
                   Manage Profile
                 </MenuItem>
                 <MenuItem 
                   component={Link} 
-                  to={`/${currentUsername}/manage/interests`}
+                  to={`/${blogProfile?.username}/manage/interests`}
                   onClick={handleManageClose}
                 >
                   Manage Interests

@@ -32,56 +32,73 @@ function InterestPage() {
   const isOwner = user?.id === interestData?.user_id
 
   useEffect(() => {
-    if (interestName) {
-      fetchInterest()
-    } else {
-      setLoading(false)
-      setError('No interest specified')
+    let isMounted = true
+    
+    const fetchData = async () => {
+      if (!interestName) {
+        setLoading(false)
+        setError('No interest specified')
+        return
+      }
+
+      setLoading(true)
+      try {
+        // Fetch both interest and posts in parallel
+        const [interestResult, postsResult] = await Promise.all([
+          supabase
+            .from('interests')
+            .select('*')
+            .eq('name', interestName)
+            .single(),
+          supabase
+            .from('posts')
+            .select('*')
+            .contains('interest_names', [interestName])
+        ])
+
+        if (interestResult.error) throw interestResult.error
+        if (postsResult.error) throw postsResult.error
+
+        if (isMounted) {
+          setInterestData(interestResult.data)
+          setPosts(postsResult.data || [])
+          setError(null)
+        }
+      } catch (error) {
+        if (isMounted) {
+          setError('Failed to fetch interest data')
+          console.error('Error fetching interest data:', error)
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    fetchData()
+    return () => {
+      isMounted = false
     }
   }, [interestName])
 
-  useEffect(() => {
-    if (interestData) {
-      fetchPosts()
-    }
-  }, [interestData, searchTerm])
-
-  const fetchInterest = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('interests')
-        .select('*')
-        .eq('name', interestName)
-        .single()
-
-      if (error) throw error
-      setInterestData(data)
-    } catch (error) {
-      setError('Failed to fetch interest')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchPosts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .contains('interest_names', [interestName])
-
-      if (error) throw error
-      setPosts(data || [])
-    } catch (error) {
-      setError('Failed to fetch posts')
-    }
-  }
-
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 2 }}>
+      <Box sx={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        backgroundColor: 'background.default',
+        zIndex: 1000
+      }}>
         <CircularProgress />
-        <Typography>Loading interest...</Typography>
+        <Typography sx={{ mt: 2 }}>Loading interest...</Typography>
       </Box>
     )
   }

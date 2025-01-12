@@ -22,9 +22,15 @@ import { supabase } from '../lib/supabase'
 import IdeationPanel from '../components/ideation/IdeationPanel'
 import ResearchPanel from '../components/research/ResearchPanel'
 import { useAI } from '../services/ai'
+import ChildPostsPanel from '../components/childposts/ChildPostsPanel'
 
 // Define development steps
 const DEVELOPMENT_STEPS = [
+  { 
+    label: 'Child Posts', 
+    description: 'Manage child posts',
+    component: ChildPostsPanel 
+  },
   { 
     label: 'Ideation', 
     description: 'Generate and refine ideas',
@@ -75,7 +81,6 @@ export default function PostWriter() {
   const [loading, setLoading] = useState(true)
   const [activeStep, setActiveStep] = useState(0)
   const [saving, setSaving] = useState(false)
-  const [developmentId, setDevelopmentId] = useState(null)
 
   useEffect(() => {
     fetchPost()
@@ -86,6 +91,18 @@ export default function PostWriter() {
     const stepName = DEVELOPMENT_STEPS[activeStep].label.toLowerCase()
     setCurrentStep(stepName)
   }, [activeStep, setCurrentStep])
+
+  // Set initial active step based on status
+  useEffect(() => {
+    if (post?.post_writer?.status) {
+      const stepIndex = DEVELOPMENT_STEPS.findIndex(
+        step => step.label.toLowerCase() === post.post_writer.status.toLowerCase()
+      )
+      if (stepIndex !== -1) {
+        setActiveStep(stepIndex)
+      }
+    }
+  }, [post?.post_writer?.status])
 
   const fetchPost = async () => {
     try {
@@ -107,54 +124,69 @@ export default function PostWriter() {
         interest_names: postData.interest_names || []
       }
 
-      // Fetch post development data
-      const { data: devData, error: devError } = await supabase
-        .from('post_developments')
-        .select('*')
-        .eq('post_id', id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
+      // Fetch interest descriptions
+      const { data: interestData, error: interestError } = await supabase
+        .from('interests')
+        .select('name, description')
+        .in('name', processedPostData.interest_names || [])
 
-      if (devError) {
-        if (devError.code === 'PGRST116') {
-          // No existing development data found, will create new record
-        } else {
-          throw devError
-        }
+      if (interestError) {
+        console.error('Error fetching interest descriptions:', interestError)
       }
 
-      let finalDevData = devData
-      // If no development data exists, create initial record
-      if (!devData) {
-        const { data: newDev, error: createError } = await supabase
-          .from('post_developments')
-          .insert([{
-            post_id: id,
-            status: DEVELOPMENT_STEPS[0].label.toLowerCase(),
-            version: 1,
-            content: processedPostData.brief_description || '',
-            ideas: { ideas: [], relatedTopics: [], audiences: [], childPosts: [], futurePosts: [] }
-          }])
+      // Add interest descriptions to the processed data
+      processedPostData.interest_descriptions = interestData?.reduce((acc, interest) => {
+        try {
+          // If description is already an object, use it directly
+          if (typeof interest.description === 'object' && interest.description !== null) {
+            acc[interest.name] = interest.description
+          } else if (interest.description) {
+            // Try to parse as JSON if it's a string
+            try {
+              acc[interest.name] = JSON.parse(interest.description)
+            } catch (parseError) {
+              console.log(`Using raw string for interest ${interest.name} - not valid JSON:`, interest.description)
+              acc[interest.name] = interest.description
+            }
+          } else {
+            acc[interest.name] = null
+          }
+        } catch (e) {
+          console.error(`Error processing description for interest ${interest.name}:`, e)
+          acc[interest.name] = null
+        }
+        return acc
+      }, {}) || {}
+
+      // Initialize post_writer if it doesn't exist
+      if (!processedPostData.post_writer) {
+        const { data: updatedPost, error: updateError } = await supabase
+          .from('posts')
+          .update({
+            post_writer: {
+              status: DEVELOPMENT_STEPS[0].label.toLowerCase(),
+              version: 1,
+              content: processedPostData.brief_description || '',
+              ideas: { ideas: [], relatedTopics: [], audiences: [], childPosts: [], futurePosts: [] },
+              research_findings: null,
+              refutations: null,
+              post_outline: null,
+              post_images: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          })
+          .eq('id', id)
           .select()
           .single()
 
-        if (createError) throw createError
-
-        setDevelopmentId(newDev.id)
-        finalDevData = newDev
-      } else {
-        setDevelopmentId(devData.id)
+        if (updateError) throw updateError
+        processedPostData.post_writer = updatedPost.post_writer
       }
 
-      // Combine post and development data
-      const combinedData = {
-        ...processedPostData,
-        development: finalDevData
-      }
-
-      setPost(combinedData)
+      setPost(processedPostData)
     } catch (error) {
+      console.error('Error fetching post:', error)
       // Handle error silently
     } finally {
       setLoading(false)
@@ -162,8 +194,6 @@ export default function PostWriter() {
   }
 
   const handleSave = async (updatedData) => {
-    if (!developmentId) return
-
     try {
       setSaving(true)
       
@@ -177,16 +207,20 @@ export default function PostWriter() {
         if (postError) throw postError
       }
 
-      // Update existing development record
-      const { error: devError } = await supabase
-        .from('post_developments')
+      // Update post_writer field
+      const { error: updateError } = await supabase
+        .from('posts')
         .update({
-          status: DEVELOPMENT_STEPS[activeStep].label.toLowerCase(),
-          ...updatedData
+          post_writer: {
+            ...post.post_writer,
+            ...updatedData,
+            status: DEVELOPMENT_STEPS[activeStep].label.toLowerCase(),
+            updated_at: new Date().toISOString()
+          }
         })
-        .eq('id', developmentId)
+        .eq('id', id)
 
-      if (devError) throw devError
+      if (updateError) throw updateError
 
       // Update local state
       setPost(prev => ({
@@ -194,13 +228,15 @@ export default function PostWriter() {
         brief_description: activeStep === 0 && updatedData.content !== undefined && updatedData.content.trim() !== '' 
           ? updatedData.content 
           : prev.brief_description,
-        development: {
-          ...prev.development,
+        post_writer: {
+          ...prev.post_writer,
           ...updatedData,
-          status: DEVELOPMENT_STEPS[activeStep].label.toLowerCase()
+          status: DEVELOPMENT_STEPS[activeStep].label.toLowerCase(),
+          updated_at: new Date().toISOString()
         }
       }))
     } catch (error) {
+      console.error('Error saving post:', error)
       // Handle error silently
     } finally {
       setSaving(false)
@@ -250,7 +286,7 @@ export default function PostWriter() {
           <Divider />
 
           {/* Tags and Interests side by side */}
-          <Box sx={{ display: 'flex', gap: 4 }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
             <Box sx={{ flex: 1 }}>
               <Typography variant="overline" color="text.secondary" gutterBottom>
                 Tags
@@ -310,7 +346,12 @@ export default function PostWriter() {
       <Paper sx={{ p: 3, mb: 3 }}>
         <CurrentStepComponent
           data={{
-            ...post?.development
+            ...post?.post_writer,
+            brief_description: post?.brief_description,
+            tag_names: post?.tag_names,
+            interest_names: post?.interest_names,
+            interest_ids: post?.interest_ids,
+            interest_descriptions: post?.interest_descriptions
           }}
           onUpdate={handleSave}
         />

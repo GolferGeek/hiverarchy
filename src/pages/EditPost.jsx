@@ -107,6 +107,7 @@ export default function EditPost() {
     setError(null)
 
     try {
+      // Update post with post_writer field preserved
       const { error } = await supabase
         .from('posts')
         .update({
@@ -117,7 +118,11 @@ export default function EditPost() {
           tag_ids: post.tag_ids,
           interest_names: post.interest_names,
           interest_ids: post.interest_ids,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          post_writer: {
+            ...post.post_writer,
+            updated_at: new Date().toISOString()
+          }
         })
         .eq('id', id)
 

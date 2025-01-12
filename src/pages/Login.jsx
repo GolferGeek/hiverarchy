@@ -48,11 +48,11 @@ function Login() {
         attempts++
       }
 
-      // Navigate directly to username path if we have it
+      // Navigate to the user's homepage
       if (userProfile?.username) {
-        navigate(`/${userProfile.username}`, { replace: true })
+        navigate(`/${userProfile.username}`)
       } else {
-        navigate('/', { replace: true })
+        navigate('/manage/profile') // If no username set, go to profile setup
       }
 
     } catch (error) {

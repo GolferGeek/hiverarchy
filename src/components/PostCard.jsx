@@ -5,9 +5,11 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import ConfirmModal from './ConfirmModal'
 import { Paper, Typography, Button, Box, Chip, Stack, Alert } from '@mui/material'
+import { useProfile } from '../contexts/ProfileContext'
 
 export default function PostCard({ post, onDelete, showInterest = true }) {
   const { user } = useAuth()
+  const { currentUsername } = useProfile()
   const navigate = useNavigate()
   const defaultUserId = import.meta.env.VITE_DEFAULT_USER
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -124,7 +126,7 @@ export default function PostCard({ post, onDelete, showInterest = true }) {
               <Typography 
                 variant="h6" 
                 component={Link} 
-                to={`/${post.username}/post/${post.id}`}
+                to={`/${currentUsername}/post/${post.id}`}
                 sx={{ 
                   textDecoration: 'none',
                   color: 'inherit',

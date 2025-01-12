@@ -209,21 +209,58 @@ function CreatePost() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
+    setError(null)
 
     try {
+      // Create the post with post_writer initialized
       const { data, error } = await supabase
         .from('posts')
-        .insert([post])
+        .insert([{
+          title: post.title,
+          brief_description: post.brief_description,
+          content: post.content,
+          tag_names: post.tag_names,
+          tag_ids: post.tag_ids,
+          interest_names: post.interest_names,
+          interest_ids: post.interest_ids,
+          user_id: user.id,
+          post_writer: {
+            status: 'child_posts',
+            version: 1,
+            content: post.brief_description || '',
+            ideas: { ideas: [], relatedTopics: [], audiences: [], childPosts: [], futurePosts: [] },
+            research_findings: null,
+            refutations: null,
+            post_outline: null,
+            post_images: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        }])
         .select()
         .single()
 
       if (error) throw error
 
-      navigate(`/${username}/post/${data.id}`)
+      // Handle image uploads if any
+      if (post.images && post.images.length > 0) {
+        const { error: imageError } = await supabase
+          .from('images')
+          .insert(
+            post.images.map(image => ({
+              url: image.url,
+              post_id: data.id
+            }))
+          )
+
+        if (imageError) throw imageError
+      }
+
+      navigate(`/${user.id}/post/${data.id}`)
     } catch (error) {
-      setError('Failed to create post')
+      console.error('Error creating post:', error)
+      setError('Failed to create post. Please try again.')
     } finally {
       setLoading(false)
     }

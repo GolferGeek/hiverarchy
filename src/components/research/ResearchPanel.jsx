@@ -13,7 +13,10 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
-  Divider
+  Divider,
+  Tabs,
+  Tab,
+  Chip
 } from '@mui/material'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import EditIcon from '@mui/icons-material/Edit'
@@ -62,7 +65,10 @@ export default function ResearchPanel({ data, onUpdate }) {
   const [originalPrompt, setOriginalPrompt] = useState(data?.original || '')
   const [systemPrompt, setSystemPrompt] = useState(RESEARCH_AGENT_PROMPT)
   const [researchPrompt, setResearchPrompt] = useState(data?.research_prompt || '')
-  const [researchResults, setResearchResults] = useState(data?.research_results || [])
+  const [activeTab, setActiveTab] = useState(0)
+  const [currentResearch, setCurrentResearch] = useState(data?.ideas?.currentResearch || [])
+  const [futureResearch, setFutureResearch] = useState(data?.ideas?.futureResearch || [])
+  const [childResearch, setChildResearch] = useState(data?.ideas?.childResearch || [])
   const [editingSystemPrompt, setEditingSystemPrompt] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -71,11 +77,6 @@ export default function ResearchPanel({ data, onUpdate }) {
   const [moveTarget, setMoveTarget] = useState(null)
 
   const canEdit = user?.email === 'golfergeek@gmail.com'
-
-  // Reset system prompt if it was changed
-  useEffect(() => {
-    setSystemPrompt(RESEARCH_AGENT_PROMPT)
-  }, [])
 
   // Debounced save function
   const debouncedSave = useCallback(
@@ -87,12 +88,12 @@ export default function ResearchPanel({ data, onUpdate }) {
           system_prompt: systemPrompt,
           research_prompt: researchPrompt,
           ideas: {
-            researchAreas: researchResults,
+            currentResearch,
+            futureResearch,
+            childResearch,
             ideas: [],
             relatedTopics: [],
-            audiences: [],
-            childPosts: [],
-            futurePosts: []
+            audiences: []
           }
         })
         setSaveMessage('Changes saved')
@@ -105,18 +106,53 @@ export default function ResearchPanel({ data, onUpdate }) {
         setSaving(false)
       }
     }, 1000),
-    [originalPrompt, systemPrompt, researchPrompt, researchResults]
+    [originalPrompt, systemPrompt, researchPrompt, currentResearch, futureResearch, childResearch]
   )
 
-  // Auto-save when content changes
-  useEffect(() => {
-    debouncedSave()
-    return () => debouncedSave.cancel()
-  }, [originalPrompt, systemPrompt, researchPrompt, researchResults])
+  const handleDelete = (index) => {
+    switch (activeTab) {
+      case 0:
+        setCurrentResearch(prev => prev.filter((_, i) => i !== index))
+        break
+      case 1:
+        setFutureResearch(prev => prev.filter((_, i) => i !== index))
+        break
+      case 2:
+        setChildResearch(prev => prev.filter((_, i) => i !== index))
+        break
+    }
+  }
 
-  const handleSystemPromptSave = () => {
-    setEditingSystemPrompt(false)
-    debouncedSave()
+  const handleMove = (fromIndex, toTab) => {
+    let item
+    // Get item from source tab
+    switch (activeTab) {
+      case 0:
+        item = currentResearch[fromIndex]
+        setCurrentResearch(prev => prev.filter((_, i) => i !== fromIndex))
+        break
+      case 1:
+        item = futureResearch[fromIndex]
+        setFutureResearch(prev => prev.filter((_, i) => i !== fromIndex))
+        break
+      case 2:
+        item = childResearch[fromIndex]
+        setChildResearch(prev => prev.filter((_, i) => i !== fromIndex))
+        break
+    }
+
+    // Add to target tab
+    switch (toTab) {
+      case 'Current Research':
+        setCurrentResearch(prev => [item, ...prev])
+        break
+      case 'Future Research':
+        setFutureResearch(prev => [item, ...prev])
+        break
+      case 'Child Research':
+        setChildResearch(prev => [item, ...prev])
+        break
+    }
   }
 
   const generateResearch = async () => {
@@ -127,13 +163,62 @@ export default function ResearchPanel({ data, onUpdate }) {
         throw new Error('No AI service available')
       }
 
-      const response = await service.generateCompletion(RESEARCH_AGENT_PROMPT, {
+      console.log('Using AI service:', service)
+      console.log('Available methods on service:', Object.getOwnPropertyNames(service))
+      console.log('Service prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(service)))
+
+      const completionMethod = service.generateCompletion ? 'generateCompletion' :
+                             service.createCompletion ? 'createCompletion' :
+                             service.complete ? 'complete' :
+                             service.chat ? 'chat' : null
+
+      if (!completionMethod) {
+        console.error('No completion method found on service:', service)
+        throw new Error('Selected service does not support text generation. Please select an AI service like OpenAI or Anthropic.')
+      }
+
+      console.log('Using completion method:', completionMethod)
+      const response = await service[completionMethod](originalPrompt, {
         temperature: 0.7,
         maxTokens: 2000
+      }).catch(error => {
+        console.error('AI service error:', error)
+        throw error
       })
 
-      console.log('Research results:', response.text)
-      setResearchResults([response.text, ...researchResults])
+      let responseText = ''
+      if (typeof response === 'string') {
+        responseText = response
+      } else if (response?.text) {
+        responseText = response.text
+      } else if (response?.content) {
+        responseText = response.content
+      } else if (response?.choices?.[0]?.text) {
+        responseText = response.choices[0].text
+      } else if (response?.choices?.[0]?.message?.content) {
+        responseText = response.choices[0].message.content
+      } else {
+        console.error('Unexpected response format:', response)
+        throw new Error('Unexpected response format from AI service')
+      }
+
+      console.log('Research results:', responseText)
+
+      // Split response into separate items by the separator
+      const items = responseText.split('\n\n---\n\n').filter(Boolean)
+
+      // Add to current tab
+      switch (activeTab) {
+        case 0:
+          setCurrentResearch(prev => [...items, ...prev])
+          break
+        case 1:
+          setFutureResearch(prev => [...items, ...prev])
+          break
+        case 2:
+          setChildResearch(prev => [...items, ...prev])
+          break
+      }
 
       // Save to database
       await onUpdate({
@@ -141,12 +226,12 @@ export default function ResearchPanel({ data, onUpdate }) {
         system_prompt: systemPrompt,
         research_prompt: researchPrompt,
         ideas: {
-          researchAreas: [response.text, ...researchResults],
+          currentResearch: activeTab === 0 ? [...items, ...currentResearch] : currentResearch,
+          futureResearch: activeTab === 1 ? [...items, ...futureResearch] : futureResearch,
+          childResearch: activeTab === 2 ? [...items, ...childResearch] : childResearch,
           ideas: [],
           relatedTopics: [],
-          audiences: [],
-          childPosts: [],
-          futurePosts: []
+          audiences: []
         }
       })
 
@@ -161,11 +246,23 @@ export default function ResearchPanel({ data, onUpdate }) {
     }
   }
 
-  const handleDelete = (index) => {
-    const newResults = researchResults.filter((_, i) => i !== index)
-    setResearchResults(newResults)
-    debouncedSave()
-  }
+  const tabs = [
+    { 
+      label: 'Current Research', 
+      items: currentResearch,
+      empty: 'No research results yet'
+    },
+    { 
+      label: 'Future Research', 
+      items: futureResearch,
+      empty: 'No future research yet'
+    },
+    { 
+      label: 'Child Research', 
+      items: childResearch,
+      empty: 'No child research yet'
+    }
+  ]
 
   return (
     <Box>
@@ -189,62 +286,6 @@ export default function ResearchPanel({ data, onUpdate }) {
           <AIServiceSelector />
         </Box>
 
-        {/* Research Agent Prompt Section */}
-        <Box sx={{ mt: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-            <Typography variant="subtitle1">Ideation Prompt</Typography>
-            {canEdit && (
-              <IconButton 
-                size="small" 
-                onClick={() => editingSystemPrompt ? handleSystemPromptSave() : setEditingSystemPrompt(true)}
-              >
-                {editingSystemPrompt ? <SaveIcon /> : <EditIcon />}
-              </IconButton>
-            )}
-          </Box>
-          <Box 
-            sx={{ 
-              mb: 1, 
-              p: 2, 
-              bgcolor: 'background.paper', 
-              borderRadius: 1,
-              border: '1px solid',
-              borderColor: 'divider',
-              maxHeight: '200px',
-              overflow: 'auto'
-            }}
-          >
-            <Typography variant="body2" color="text.secondary" whiteSpace="pre-wrap">
-              {systemPrompt}
-            </Typography>
-          </Box>
-          {editingSystemPrompt && canEdit && (
-            <TextField
-              fullWidth
-              multiline
-              rows={8}
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              sx={{ mb: 1 }}
-            />
-          )}
-        </Box>
-
-        {/* Research Focus Section */}
-        <Box sx={{ mt: 2, mb: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Specific Research Focus (Optional)
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={2}
-            value={researchPrompt}
-            onChange={(e) => setResearchPrompt(e.target.value)}
-            placeholder="Enter any specific aspects or questions you want to focus on..."
-          />
-        </Box>
-
         <Button
           variant="contained"
           onClick={generateResearch}
@@ -257,16 +298,35 @@ export default function ResearchPanel({ data, onUpdate }) {
 
       {/* Research Results Section */}
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Research Results
-        </Typography>
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+        >
+          {tabs.map((tab, index) => (
+            <Tab
+              key={tab.label}
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {tab.label}
+                  <Chip
+                    label={tab.items.length}
+                    size="small"
+                    sx={{ ml: 1 }}
+                  />
+                </Box>
+              }
+            />
+          ))}
+        </Tabs>
+
         <List>
-          {researchResults.length === 0 ? (
+          {tabs[activeTab].items.length === 0 ? (
             <ListItem>
-              <ListItemText secondary="No research results yet" />
+              <ListItemText secondary={tabs[activeTab].empty} />
             </ListItem>
           ) : (
-            researchResults.map((result, index) => (
+            tabs[activeTab].items.map((result, index) => (
               <Box key={index}>
                 {index > 0 && <Divider />}
                 <ListItem
@@ -315,40 +375,54 @@ export default function ResearchPanel({ data, onUpdate }) {
                       }
                     }}>
                       <Box sx={{ position: 'relative' }}>
-                        <ReactMarkdown
-                          components={{
-                            li: ({ node, ...props }) => {
-                              return (
-                                <Box component="li" sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                                  <Box {...props} sx={{ flex: 1 }} />
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => setMoveTarget(moveTarget === index ? null : index)}
-                                    sx={{ 
-                                      mt: -1,
-                                      visibility: 'hidden',
-                                      '&:hover': {
-                                        visibility: 'visible'
-                                      }
-                                    }}
-                                  >
-                                    <ArrowForwardIcon fontSize="small" />
-                                  </IconButton>
-                                </Box>
-                              )
-                            }
-                          }}
-                        >
-                          {result}
-                        </ReactMarkdown>
+                        <ReactMarkdown>{result}</ReactMarkdown>
                       </Box>
                     </Box>
                   </Box>
-                  <ListItemSecondaryAction>
+                  <Box sx={{ position: 'absolute', right: 0, top: 8 }}>
+                    <IconButton
+                      edge="end"
+                      onClick={() => setMoveTarget(moveTarget === index ? null : index)}
+                      sx={{ mr: 1 }}
+                    >
+                      <ArrowForwardIcon />
+                    </IconButton>
                     <IconButton edge="end" onClick={() => handleDelete(index)}>
                       <DeleteIcon />
                     </IconButton>
-                  </ListItemSecondaryAction>
+                    {moveTarget === index && (
+                      <Box
+                        sx={{ 
+                          position: 'absolute',
+                          right: '100%',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          backgroundColor: 'background.paper',
+                          boxShadow: 3,
+                          borderRadius: 1,
+                          p: 1,
+                          zIndex: 1000,
+                          mr: 1
+                        }}
+                      >
+                        {tabs.map((tab) => (
+                          tab.label !== tabs[activeTab].label && (
+                            <Button
+                              key={tab.label}
+                              size="small"
+                              onClick={() => {
+                                handleMove(index, tab.label)
+                                setMoveTarget(null)
+                              }}
+                              sx={{ display: 'block', mb: 0.5 }}
+                            >
+                              {tab.label}
+                            </Button>
+                          )
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
                 </ListItem>
               </Box>
             ))

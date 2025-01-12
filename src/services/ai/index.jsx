@@ -3,11 +3,13 @@ import { OpenAIService } from './openai'
 import { AnthropicService } from './anthropic'
 import { GrokService } from './grok'
 import { PerplexityService } from './perplexity'
+import SerperService from './serper'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
 // Define which services are available for each development step
 export const STEP_SERVICES = {
+  child_posts: ['openai', 'anthropic', 'grok'],
   ideation: ['openai', 'anthropic', 'grok'],
   research: ['serper', 'perplexity'],
   // Add other steps as needed
@@ -66,29 +68,34 @@ export function AIProvider({ children }) {
   }
 
   const initializeService = async (serviceType) => {
-    if (!profile?.[`api_${serviceType}`]) return false
+    if (!profile?.[`api_${serviceType}`]) return null
 
     try {
+      let service = null
       switch (serviceType) {
         case 'openai':
-          services.openai = new OpenAIService(profile.api_openai)
+          service = new OpenAIService(profile.api_openai)
           break
         case 'anthropic':
-          services.anthropic = new AnthropicService(profile.api_anthropic)
+          service = new AnthropicService(profile.api_anthropic)
           break
         case 'grok':
-          services.grok = new GrokService(profile.api_grok)
+          service = new GrokService(profile.api_grok)
           break
         case 'perplexity':
-          services.perplexity = new PerplexityService(profile.api_perplexity)
+          service = new PerplexityService(profile.api_perplexity)
           break
         case 'serper':
-          services.serper = new SerperService(profile.api_serper)
+          service = new SerperService(profile.api_serper)
           break
       }
-      return true
+      if (service) {
+        services[serviceType] = service
+      }
+      return service
     } catch (error) {
-      return false
+      console.error(`Error initializing ${serviceType} service:`, error)
+      return null
     }
   }
 
@@ -99,12 +106,14 @@ export function AIProvider({ children }) {
 
     // Try to initialize first available service
     for (const serviceType of ['openai', 'anthropic', 'grok', 'perplexity', 'serper']) {
-      if (await initializeService(serviceType)) {
+      const service = await initializeService(serviceType)
+      if (service) {
         setCurrentService(serviceType)
-        return services[serviceType]
+        return service
       }
     }
 
+    console.error('No AI service available')
     return null
   }
 

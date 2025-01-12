@@ -4,17 +4,19 @@ import { useTheme } from '../contexts/ThemeContext'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useEffect } from 'react'
+import { useProfile } from '../contexts/ProfileContext'
 
-export default function Welcome({ defaultUsername }) {
+export default function Welcome() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { userProfile } = useProfile()
   const { darkMode } = useTheme()
 
   useEffect(() => {
-    if (user) {
-      navigate(`/${defaultUsername}/posts`)
+    if (user && userProfile?.username) {
+      navigate(`/${userProfile.username}`)
     }
-  }, [user, defaultUsername, navigate])
+  }, [user, userProfile, navigate])
 
   return (
     <Container maxWidth="lg">
@@ -117,8 +119,8 @@ export default function Welcome({ defaultUsername }) {
                 Check out GolferGeek's blog to see the platform in action
               </Typography>
               <Button 
-                component={Link} 
-                to={`/${defaultUsername}`}
+                component={Link}
+                to="/golfergeek"
                 variant="contained" 
                 size="large"
                 sx={{ mt: 2, borderRadius: 0 }}

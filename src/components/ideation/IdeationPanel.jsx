@@ -29,7 +29,7 @@ import { useAI } from '../../services/ai'
 import { debounce } from 'lodash'
 
 // Update the system prompt to be more focused on brainstorming and analysis
-const DEFAULT_SYSTEM_PROMPT = `You are an enthusiastic and insightful ideation partner with expertise in technology trends, software development, and business analysis. Your role is to generate creative and practical ideas related to the given topic. Your responses should be structured and concise.
+const DEFAULT_SYSTEM_PROMPT = `You are an enthusiastic and insightful ideation partner with expertise in technology trends, software development, and business analysis. Your role is to generate creative and practical ideas related to the given topic, with a focus on the following interests: {interest_list}. Your responses should be structured and concise.
 
 Format your response in these specific sections:
 
@@ -38,30 +38,20 @@ IDEAS:
 - Focus on concrete, actionable concepts
 - Include both practical and innovative suggestions
 - Keep each idea clear and well-defined
+- Consider how each idea could support the planned child posts
 
 RELATED TOPICS:
 - Start each topic with a dash (-)
 - List relevant connected themes and concepts
 - Consider technical and non-technical relationships
-- Focus on topics that expand the main idea
+- Focus on topics that expand the main idea and complement child posts
 
 AUDIENCE:
 - Start each segment with a dash (-)
 - Identify specific groups who would benefit
 - Consider both direct and indirect audiences
 - Include potential impact and reach
-
-CHILD POSTS:
-- Start each post idea with a dash (-)
-- Suggest detailed subtopics for deeper exploration
-- Ensure each could be a standalone article
-- Maintain clear connection to main topic
-
-FUTURE POSTS:
-- Start each post idea with a dash (-)
-- Explore future developments and trends
-- Consider long-term implications
-- Identify emerging opportunities
+- Consider audience overlap with child posts
 
 For each section, provide 2-4 high-quality suggestions. Each item should include a brief explanation of its relevance or potential impact. Keep the focus on generating practical, valuable ideas that can be developed further.`
 
@@ -224,7 +214,7 @@ function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
 export default function IdeationPanel({ data, onUpdate }) {
   const { getCurrentService, services } = useAI()
   const [activeTab, setActiveTab] = useState(0)
-  const [originalPrompt, setOriginalPrompt] = useState(data?.content || '')
+  const [originalPrompt, setOriginalPrompt] = useState('')
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
   const [ideas, setIdeas] = useState(data?.ideas?.ideas || [])
   const [relatedTopics, setRelatedTopics] = useState(data?.ideas?.relatedTopics || [])
@@ -237,12 +227,16 @@ export default function IdeationPanel({ data, onUpdate }) {
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState(false)
 
-  // Update originalPrompt when data.content changes
+  // Update ideas when data.ideas changes
   useEffect(() => {
-    if (data?.content) {
-      setOriginalPrompt(data.content)
+    if (data?.ideas) {
+      setIdeas(data.ideas.ideas || [])
+      setRelatedTopics(data.ideas.relatedTopics || [])
+      setAudiences(data.ideas.audiences || [])
+      setChildPosts(data.ideas.childPosts || [])
+      setFuturePosts(data.ideas.futurePosts || [])
     }
-  }, [data?.content])
+  }, [data?.ideas])
 
   // Debounced save function
   const debouncedSave = useCallback(
@@ -250,7 +244,6 @@ export default function IdeationPanel({ data, onUpdate }) {
       try {
         setSaving(true)
         await onUpdate({
-          content: originalPrompt,
           ideas: {
             ideas,
             relatedTopics,
@@ -269,21 +262,21 @@ export default function IdeationPanel({ data, onUpdate }) {
         setTimeout(() => setSaveMessage(''), 3000)
       }
     }, 1000),
-    [originalPrompt, ideas, relatedTopics, audiences, childPosts, futurePosts, onUpdate]
+    [ideas, relatedTopics, audiences, childPosts, futurePosts, onUpdate]
   )
 
   // Auto-save when content changes
   useEffect(() => {
     debouncedSave()
     return () => debouncedSave.cancel()
-  }, [originalPrompt, systemPrompt, ideas, relatedTopics, audiences, childPosts, futurePosts])
+  }, [systemPrompt, ideas, relatedTopics, audiences, childPosts, futurePosts])
 
   const handlePromptSave = async () => {
     setEditingPrompt(false)
     try {
       setSaving(true)
       await onUpdate({
-        original: originalPrompt
+        system_prompt: systemPrompt
       })
       setSaveMessage('Prompt saved successfully')
       setSaveError(false)
@@ -362,9 +355,7 @@ export default function IdeationPanel({ data, onUpdate }) {
     }
   }
 
-  const handleGenerate = async () => {
-    if (!originalPrompt.trim()) return
-
+  const generateIdeas = async () => {
     try {
       setIsGenerating(true)
       const service = await getCurrentService()
@@ -372,14 +363,27 @@ export default function IdeationPanel({ data, onUpdate }) {
         throw new Error('No AI service available')
       }
 
-      const fullPrompt = `${systemPrompt}\n\nTopic: "${originalPrompt}"`
+      // Include child posts in the prompt
+      const childPostsList = data?.ideas?.childPosts?.length > 0
+        ? `\n\nPlanned Child Posts:\n${data.ideas.childPosts.map(post => `- ${post}`).join('\n')}`
+        : ''
 
-      const response = await service.generateCompletion(fullPrompt, {
+      const prompt = `Main Topic: ${data?.brief_description || ''}\n\n${originalPrompt}${childPostsList}`
+
+      const completionMethod = service.generateCompletion ? 'generateCompletion' :
+                             service.createCompletion ? 'createCompletion' :
+                             service.complete ? 'complete' :
+                             service.chat ? 'chat' : null
+
+      if (!completionMethod) {
+        throw new Error('Selected service does not support text generation')
+      }
+
+      const response = await service[completionMethod](prompt, {
         temperature: 0.7,
         maxTokens: 2000
       })
 
-      // Handle different response formats
       let responseText = ''
       if (typeof response === 'string') {
         responseText = response
@@ -391,129 +395,54 @@ export default function IdeationPanel({ data, onUpdate }) {
         responseText = response.choices[0].text
       } else if (response?.choices?.[0]?.message?.content) {
         responseText = response.choices[0].message.content
-      } else {
-        throw new Error('Unexpected response format from AI service')
       }
 
-      // Process the response and extract sections
-      const sections = parseSections(responseText)
-      
-      // Update all sections at once
-      setIdeas(sections.ideas)
-      setRelatedTopics(sections.relatedTopics)
-      setAudiences(sections.audiences)
-      setChildPosts(sections.childPosts)
-      setFuturePosts(sections.futurePosts)
+      // Process the response into sections
+      const sections = {
+        ideas: [],
+        relatedTopics: [],
+        audiences: []
+      }
 
-      // Save the generated content
-      await onUpdate({
-        content: originalPrompt,
-        ideas: {
-          ideas: sections.ideas,
-          relatedTopics: sections.relatedTopics,
-          audiences: sections.audiences,
-          childPosts: sections.childPosts,
-          futurePosts: sections.futurePosts
+      let currentSection = null
+      responseText.split('\n').forEach(line => {
+        const trimmedLine = line.trim()
+        if (trimmedLine === 'IDEAS:') {
+          currentSection = 'ideas'
+        } else if (trimmedLine === 'RELATED TOPICS:') {
+          currentSection = 'relatedTopics'
+        } else if (trimmedLine === 'AUDIENCE:') {
+          currentSection = 'audiences'
+        } else if (trimmedLine && currentSection && trimmedLine.startsWith('-')) {
+          sections[currentSection].push(trimmedLine.substring(1).trim())
         }
       })
 
-      setSaveMessage('Ideas generated successfully')
+      // Update state with new ideas
+      setIdeas(sections.ideas)
+      setRelatedTopics(sections.relatedTopics)
+      setAudiences(sections.audiences)
+
+      // Save changes
+      await onUpdate({
+        original: originalPrompt,
+        ideas: {
+          ...data?.ideas,
+          ideas: sections.ideas,
+          relatedTopics: sections.relatedTopics,
+          audiences: sections.audiences
+        }
+      })
+
+      setSaveMessage('Generated new ideas')
       setSaveError(false)
     } catch (error) {
-      setSaveMessage('Failed to generate ideas. Please try again.')
+      console.error('Error generating ideas:', error)
+      setSaveMessage('Error generating ideas')
       setSaveError(true)
     } finally {
       setIsGenerating(false)
-      setTimeout(() => setSaveMessage(''), 3000)
     }
-  }
-
-  const parseSections = (text) => {
-    if (!text || typeof text !== 'string') {
-      return {
-        ideas: [],
-        relatedTopics: [],
-        audiences: [],
-        childPosts: [],
-        futurePosts: []
-      }
-    }
-
-    const sections = {
-      ideas: [],
-      relatedTopics: [],
-      audiences: [],
-      childPosts: [],
-      futurePosts: []
-    }
-
-    // Split text into sections (now handles both ### and plain headers)
-    const parts = text.split(/\n(?:###\s*)?(?=[A-Z][A-Z\s]+:)/g)
-    
-    parts.forEach(part => {
-      const trimmedPart = part.trim()
-      if (!trimmedPart) return
-      
-      const headerMatch = trimmedPart.match(/^([A-Z][A-Z\s]+):/)
-      if (!headerMatch) return
-      
-      const header = headerMatch[1].trim()
-      let currentSection = null
-      
-      // Normalize section headers
-      switch (header.toLowerCase().replace(/\s+/g, '')) {
-        case 'ideas':
-          currentSection = 'ideas'
-          break
-        case 'relatedtopics':
-          currentSection = 'relatedTopics'
-          break
-        case 'audience':
-          currentSection = 'audiences'
-          break
-        case 'childposts':
-          currentSection = 'childPosts'
-          break
-        case 'futureposts':
-          currentSection = 'futurePosts'
-          break
-      }
-
-      if (currentSection) {
-        // Extract items (lines starting with - or •)
-        const items = trimmedPart
-          .split('\n')
-          .slice(1) // Skip the header line
-          .filter(line => line.trim().match(/^[-•]\s/))
-          .map(line => {
-            // Remove bullet point and any markdown formatting
-            let cleanedLine = line
-              .replace(/^[-•]\s+/, '') // Remove bullet point
-              .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markdown
-              .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove markdown links
-              .trim()
-
-            // If there's a colon with explanation, just take the main point
-            const colonIndex = cleanedLine.indexOf(':')
-            if (colonIndex > 0) {
-              cleanedLine = cleanedLine.substring(0, colonIndex).trim()
-            } else {
-              // If there's a period, take everything before the first period
-              const periodIndex = cleanedLine.indexOf('.')
-              if (periodIndex > 0) {
-                cleanedLine = cleanedLine.substring(0, periodIndex).trim()
-              }
-            }
-
-            return cleanedLine
-          })
-          .filter(item => item.length > 0)
-
-        sections[currentSection].push(...items)
-      }
-    })
-
-    return sections
   }
 
   const handleSave = async () => {
@@ -572,7 +501,7 @@ export default function IdeationPanel({ data, onUpdate }) {
           Ideation Prompt
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          Enter a prompt to generate ideas based on your post's concept. Be specific about what aspects you want to explore.
+          Enter a specific prompt to guide the AI in generating ideas. You can reference the post's topic, interests, or any particular aspects you want to explore.
         </Typography>
         <TextField
           fullWidth
@@ -580,7 +509,7 @@ export default function IdeationPanel({ data, onUpdate }) {
           rows={3}
           value={originalPrompt}
           onChange={(e) => setOriginalPrompt(e.target.value)}
-          placeholder="Enter your prompt for idea generation..."
+          placeholder="Example: Generate ideas that explore the intersection of software development best practices and golf course management..."
           sx={{ mb: 2 }}
         />
         
@@ -618,7 +547,7 @@ export default function IdeationPanel({ data, onUpdate }) {
 
         <Button
           variant="contained"
-          onClick={handleGenerate}
+          onClick={generateIdeas}
           disabled={isGenerating || !originalPrompt.trim()}
           startIcon={isGenerating ? <CircularProgress size={20} /> : <RefreshIcon />}
           sx={{ mt: 2 }}
