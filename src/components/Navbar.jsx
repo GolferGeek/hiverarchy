@@ -3,17 +3,18 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useInterests } from '../contexts/InterestContext'
 import { useProfile } from '../contexts/ProfileContext'
-import { AppBar, Toolbar, Button, IconButton, Box, Menu, MenuItem } from '@mui/material'
+import { AppBar, Toolbar, Button, IconButton, Box, Menu, MenuItem, Stack } from '@mui/material'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SettingsIcon from '@mui/icons-material/Settings'
+import DescriptionIcon from '@mui/icons-material/Description'
 import { useState } from 'react'
 
 export default function Navbar() {
   const { user, signOut } = useAuth()
   const { darkMode, toggleDarkMode } = useTheme()
   const { interests, loading: interestsLoading } = useInterests()
-  const { blogProfile, userProfile, loading: profileLoading, currentUsername } = useProfile()
+  const { blogProfile, userProfile, loading: profileLoading, currentUsername, getFullLogoUrl } = useProfile()
   const [manageAnchorEl, setManageAnchorEl] = useState(null)
   const location = useLocation()
 
@@ -40,6 +41,13 @@ export default function Navbar() {
     return null
   }
 
+  // Get the full logo URL - ensure we're getting it from the active profile
+  const logoUrl = isWelcomePage ? getFullLogoUrl(blogProfile?.logo) : getFullLogoUrl(activeProfile?.logo)
+
+  // Debug log to check what we're getting
+  console.log('Blog Profile:', blogProfile)
+  console.log('Logo URL:', logoUrl)
+
   return (
     <AppBar 
       position="sticky" 
@@ -51,8 +59,13 @@ export default function Navbar() {
       }}
     >
       <Toolbar>
-        {/* Left section - Logo */}
-        <Box sx={{ flex: '0 0 auto' }}>
+        {/* Left section - Logo and Resume */}
+        <Stack 
+          direction="row" 
+          spacing={1} 
+          alignItems="center" 
+          sx={{ flex: '0 0 auto' }}
+        >
           <Button
             color="inherit"
             component={Link}
@@ -66,21 +79,42 @@ export default function Navbar() {
               gap: 1
             }}
           >
-            {!isWelcomePage && activeProfile?.logo && (
-              <Box
-                component="img"
-                src={activeProfile.logo}
-                alt={`${activeProfile.username}'s logo`}
-                sx={{
-                  height: 32,
-                  width: 32,
-                  objectFit: 'contain'
-                }}
-              />
-            )}
+            <Box
+              component="img"
+              src={logoUrl}
+              alt={isWelcomePage ? 'Hiverarchy logo' : `${activeProfile?.username}'s logo`}
+              sx={{
+                height: 32,
+                width: 32,
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+              onError={(e) => {
+                console.log('Logo load error, using default')
+                e.target.src = '/images/default.jpg'
+              }}
+            />
             {isWelcomePage ? 'Hiverarchy' : (activeProfile?.username || 'Hiverarchy')}
           </Button>
-        </Box>
+          
+          {/* Resume Link - Only show if resume exists and not on welcome page */}
+          {!isWelcomePage && activeProfile?.resume && (
+            <Button
+              color="inherit"
+              component={Link}
+              to={`/${currentUsername}/resume`}
+              startIcon={<DescriptionIcon />}
+              size="small"
+              sx={{ 
+                textTransform: 'none',
+                whiteSpace: 'nowrap',
+                ml: 1
+              }}
+            >
+              Resume
+            </Button>
+          )}
+        </Stack>
 
         {/* Middle section - Interests (only show if not on welcome page) */}
         {!isWelcomePage && (
@@ -114,6 +148,7 @@ export default function Navbar() {
           <IconButton onClick={toggleDarkMode} color="inherit">
             {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
+
           {user ? (
             <>
               <IconButton

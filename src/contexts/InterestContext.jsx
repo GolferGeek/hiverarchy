@@ -24,16 +24,9 @@ export function InterestProvider({ children }) {
 
   useEffect(() => {
     const effectiveUsername = routeUsername || getUsernameFromPath()
-    console.log('InterestContext: Dependencies changed:', { 
-      effectiveUsername,
-      blogProfileId: blogProfile?.id,
-      blogProfileUsername: blogProfile?.username,
-      pathname: location.pathname
-    })
     
     // If we have a blog profile, use its ID directly
     if (blogProfile?.id) {
-      console.log('Using blog profile ID to fetch interests:', blogProfile.id)
       setLoading(true)
       
       const fetchInterestsForProfile = async () => {
@@ -46,14 +39,11 @@ export function InterestProvider({ children }) {
             .order('title')
 
           if (error) {
-            console.error('Interests fetch error:', error)
             setInterests([])
           } else {
-            console.log('Fetched interests:', userInterests)
             setInterests(userInterests || [])
           }
         } catch (error) {
-          console.error('Unexpected error:', error)
           setInterests([])
         } finally {
           setLoading(false)
@@ -66,7 +56,6 @@ export function InterestProvider({ children }) {
     
     // If we don't have a blog profile but have a username, fetch the profile first
     if (effectiveUsername) {
-      console.log('Fetching profile for username:', effectiveUsername)
       setLoading(true)
       
       const fetchProfileAndInterests = async () => {
@@ -79,12 +68,9 @@ export function InterestProvider({ children }) {
             .single()
 
           if (profileError || !profile) {
-            console.error('Profile fetch error:', profileError)
             setInterests([])
             return
           }
-
-          console.log('Found profile:', profile)
 
           // Get the interests
           const { data: userInterests, error } = await supabase
@@ -95,14 +81,11 @@ export function InterestProvider({ children }) {
             .order('title')
 
           if (error) {
-            console.error('Interests fetch error:', error)
             setInterests([])
           } else {
-            console.log('Fetched interests:', userInterests)
             setInterests(userInterests || [])
           }
         } catch (error) {
-          console.error('Unexpected error:', error)
           setInterests([])
         } finally {
           setLoading(false)
@@ -114,7 +97,6 @@ export function InterestProvider({ children }) {
     }
 
     // If we have neither, clear interests
-    console.log('No profile or username available, clearing interests')
     setInterests([])
     setLoading(false)
   }, [routeUsername, blogProfile, location.pathname])
@@ -125,7 +107,6 @@ export function InterestProvider({ children }) {
     fetchInterests: async () => {
       const effectiveUsername = routeUsername || getUsernameFromPath()
       if (blogProfile?.id) {
-        console.log('Fetching interests for profile ID:', blogProfile.id)
         const { data, error } = await supabase
           .from('interests')
           .select('*')
@@ -134,12 +115,10 @@ export function InterestProvider({ children }) {
           .order('title')
         
         if (error) {
-          console.error('Error fetching interests:', error)
           return []
         }
         return data || []
       } else if (effectiveUsername) {
-        console.log('Fetching interests for username:', effectiveUsername)
         const { data: profile } = await supabase
           .from('profiles')
           .select('id')
@@ -155,7 +134,6 @@ export function InterestProvider({ children }) {
             .order('title')
           
           if (error) {
-            console.error('Error fetching interests:', error)
             return []
           }
           return data || []

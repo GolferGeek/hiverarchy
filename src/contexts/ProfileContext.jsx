@@ -18,44 +18,43 @@ export function ProfileProvider({ children }) {
   const defaultUsername = import.meta.env.VITE_DEFAULT_USERNAME
   const location = useLocation()
 
+  const getFullLogoUrl = (filename) => {
+    if (!filename || filename === 'null' || filename === 'undefined') return '/images/default.jpg'
+    if (filename.startsWith('http')) return filename
+    if (filename.startsWith('data:')) return filename
+    return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profile_logos/${filename}`
+  }
+
   // Fetch the blog profile (based on URL)
   const fetchBlogProfile = async (username) => {
-    if (!username) return null
-    
-    console.log('Fetching blog profile for username:', username)
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .ilike('username', username)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .single()
 
-    if (error) {
-      console.error('Error fetching blog profile:', error)
+      if (error) throw error
+      return data
+    } catch (error) {
       return null
     }
-    
-    console.log('Found blog profile:', data)
-    return data
   }
 
   // Fetch the user profile (based on auth)
   const fetchUserProfile = async (userId) => {
-    if (!userId) return null
-    
-    console.log('Fetching user profile for ID:', userId)
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-    if (error) {
-      console.error('Error fetching user profile:', error)
+      if (error) throw error
+      return data
+    } catch (error) {
       return null
     }
-    
-    console.log('Found user profile:', data)
-    return data
   }
 
   // Get username from path if not available from useParams
@@ -71,11 +70,9 @@ export function ProfileProvider({ children }) {
     try {
       setLoading(true)
       const effectiveUsername = routeUsername || getUsernameFromPath()
-      console.log('Fetching profiles for:', { effectiveUsername, userId: user?.id })
 
       // Get blog profile from route username or default
       const blogUsername = effectiveUsername || defaultUsername
-      console.log('Using blog username:', blogUsername)
       const newBlogProfile = await fetchBlogProfile(blogUsername)
       setBlogProfile(newBlogProfile)
 
@@ -84,7 +81,6 @@ export function ProfileProvider({ children }) {
       setUserProfile(newUserProfile)
 
     } catch (error) {
-      console.error('Error in fetchProfiles:', error)
       setBlogProfile(null)
       setUserProfile(null)
     } finally {
@@ -93,11 +89,6 @@ export function ProfileProvider({ children }) {
   }
 
   useEffect(() => {
-    console.log('ProfileContext: Dependencies changed:', { 
-      routeUsername, 
-      userId: user?.id, 
-      pathname: location.pathname 
-    })
     fetchProfiles()
   }, [routeUsername, user?.id, location.pathname])
 
@@ -111,7 +102,8 @@ export function ProfileProvider({ children }) {
     isDefaultProfile: routeUsername === defaultUsername,
     // For backward compatibility
     profile: blogProfile,
-    currentUsername: routeUsername || getUsernameFromPath() || blogProfile?.username || userProfile?.username || defaultUsername
+    currentUsername: routeUsername || getUsernameFromPath() || blogProfile?.username || userProfile?.username || defaultUsername,
+    getFullLogoUrl // Export the URL helper function
   }
 
   return (

@@ -32,10 +32,13 @@ function InterestPage() {
   const isOwner = user?.id === interestData?.user_id
 
   useEffect(() => {
-    if (routeUsername) {
+    if (interestName) {
       fetchInterest()
+    } else {
+      setLoading(false)
+      setError('No interest specified')
     }
-  }, [routeUsername, interestName])
+  }, [interestName])
 
   useEffect(() => {
     if (interestData) {
@@ -43,135 +46,34 @@ function InterestPage() {
     }
   }, [interestData, searchTerm])
 
-  async function fetchInterest() {
+  const fetchInterest = async () => {
     try {
-      console.log('Fetching interest with params:', {
-        username: routeUsername,
-        interestName: interestName
-      })
-
-      // First get the profile id from the username
-      const { data: userProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .ilike('username', routeUsername)
-        .single()
-
-      if (profileError || !userProfile) {
-        console.error('Profile not found:', profileError)
-        setError('Profile not found')
-        setLoading(false)
-        return
-      }
-
-      console.log('Found profile:', userProfile)
-
-      // First try exact match
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('interests')
         .select('*')
         .eq('name', interestName)
-        .eq('user_id', userProfile.id)
         .single()
 
-      if (error) {
-        // If exact match fails, try lowercase
-        console.log('Trying lowercase match for:', interestName.toLowerCase())
-        const { data: lowerData, error: lowerError } = await supabase
-          .from('interests')
-          .select('*')
-          .eq('name', interestName.toLowerCase())
-          .eq('user_id', userProfile.id)
-          .single()
-
-        if (lowerError) {
-          // If both fail, try case-insensitive match
-          console.log('Trying case-insensitive match')
-          const { data: iLikeData, error: iLikeError } = await supabase
-            .from('interests')
-            .select('*')
-            .ilike('name', interestName)
-            .eq('user_id', userProfile.id)
-            .single()
-
-          if (iLikeError) {
-            console.error('Interest not found after all attempts:', iLikeError)
-            setError('Interest not found')
-            setLoading(false)
-            return
-          }
-          data = iLikeData
-        } else {
-          data = lowerData
-        }
-      }
-
-      console.log('Found interest:', data)
+      if (error) throw error
       setInterestData(data)
     } catch (error) {
-      console.error('Error fetching interest:', error)
-      setError('Error fetching interest')
+      setError('Failed to fetch interest')
     } finally {
       setLoading(false)
     }
   }
 
-  async function fetchPosts() {
+  const fetchPosts = async () => {
     try {
-      // First get the user_id from the profile
-      const { data: userProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .ilike('username', routeUsername)
-        .single()
-
-      if (profileError || !userProfile) {
-        console.error('Profile not found:', profileError)
-        return
-      }
-
-      console.log('Fetching posts for profile:', userProfile)
-
-      // First fetch the posts
-      let query = supabase
+      const { data, error } = await supabase
         .from('posts')
-        .select(`
-          *,
-          images (
-            url
-          )
-        `)
-        .eq('user_id', userProfile.id)
-        .contains('interest_names', [interestData.name])
-        .is('parent_id', null) // Only fetch top-level posts
-        .order('created_at', { ascending: false })
+        .select('*')
+        .contains('interest_names', [interestName])
 
-      if (searchTerm) {
-        query = query.textSearch('title', searchTerm)
-      }
-
-      const { data, error } = await query
-      if (error) {
-        console.error('Error fetching posts:', error)
-        return
-      }
-
-      console.log('Raw posts data:', JSON.stringify(data, null, 2))
-
-      // Add username to each post since we already have it
-      const postsWithUsername = data.map(post => {
-        console.log('Processing post:', post.id)
-        console.log('Post images:', JSON.stringify(post.images, null, 2))
-        return {
-          ...post,
-          username: userProfile.username
-        }
-      })
-
-      console.log('Final posts with username:', JSON.stringify(postsWithUsername, null, 2))
-      setPosts(postsWithUsername || [])
+      if (error) throw error
+      setPosts(data || [])
     } catch (error) {
-      console.error('Error in fetchPosts:', error)
+      setError('Failed to fetch posts')
     }
   }
 

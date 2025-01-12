@@ -1,13 +1,20 @@
 import { Link } from 'react-router-dom'
 import { Box, Container, Typography, Button, Paper, Grid } from '@mui/material'
 import { useTheme } from '../contexts/ThemeContext'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { useEffect } from 'react'
 
-export default function Welcome() {
+export default function Welcome({ defaultUsername }) {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const { darkMode } = useTheme()
-  const defaultUsername = import.meta.env.VITE_DEFAULT_USERNAME || 'golfergeek'
-  
-  console.log('Welcome component - defaultUsername:', defaultUsername)
-  console.log('Welcome component - all env vars:', import.meta.env)
+
+  useEffect(() => {
+    if (user) {
+      navigate(`/${defaultUsername}/posts`)
+    }
+  }, [user, defaultUsername, navigate])
 
   return (
     <Container maxWidth="lg">

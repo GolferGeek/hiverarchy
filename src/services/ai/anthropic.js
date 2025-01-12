@@ -6,45 +6,41 @@ export class AnthropicService {
   }
 
   async generateCompletion(prompt, options = {}) {
-    try {
-      console.log('Sending request to Edge Function with options:', options)
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/anthropic`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'x-anthropic-key': this.apiKey
-          },
-          body: JSON.stringify({ prompt, options })
-        }
-      )
+    const defaultOptions = {
+      model: 'claude-3-opus-20240229',
+      temperature: 0.7,
+      maxTokens: 1000
+    }
 
-      console.log('Edge Function response status:', response.status)
-      
+    const mergedOptions = { ...defaultOptions, ...options }
+
+    try {
+      const response = await fetch('/api/anthropic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKey: this.apiKey,
+          prompt,
+          ...mergedOptions
+        })
+      })
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Edge Function error:', errorData)
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'API request failed')
       }
 
       const data = await response.json()
-      console.log('Edge Function response data:', data)
 
       if (data.error) {
-        console.error('API error:', data.error)
         throw new Error(data.error)
       }
 
-      return {
-        text: data.content[0].text,
-        usage: data.usage
-      }
+      return data.content
     } catch (error) {
-      console.error('Anthropic service error:', error)
-      throw new Error(`Anthropic API Error: ${error.message}`)
+      throw error
     }
   }
 } 

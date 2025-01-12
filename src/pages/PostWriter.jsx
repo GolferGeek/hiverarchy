@@ -11,6 +11,9 @@ import {
   Step,
   StepLabel,
   Button,
+  Chip,
+  Stack,
+  Divider
 } from '@mui/material'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore'
@@ -18,18 +21,19 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { supabase } from '../lib/supabase'
 import IdeationPanel from '../components/ideation/IdeationPanel'
 import ResearchPanel from '../components/research/ResearchPanel'
+import { useAI } from '../services/ai'
 
 // Define development steps
 const DEVELOPMENT_STEPS = [
   { 
-    label: 'Research', 
-    description: 'Research and gather information',
-    component: ResearchPanel
-  },
-  { 
     label: 'Ideation', 
     description: 'Generate and refine ideas',
     component: IdeationPanel 
+  },
+  { 
+    label: 'Research', 
+    description: 'Research and gather information',
+    component: ResearchPanel
   },
   { 
     label: 'Structure', 
@@ -66,6 +70,7 @@ const DEVELOPMENT_STEPS = [
 export default function PostWriter() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { setCurrentStep } = useAI()
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeStep, setActiveStep] = useState(0)
@@ -76,24 +81,31 @@ export default function PostWriter() {
     fetchPost()
   }, [id])
 
+  // Update current step when activeStep changes
+  useEffect(() => {
+    const stepName = DEVELOPMENT_STEPS[activeStep].label.toLowerCase()
+    setCurrentStep(stepName)
+  }, [activeStep, setCurrentStep])
+
   const fetchPost = async () => {
     try {
       setLoading(true)
-      console.log('Fetching post with ID:', id)
       
-      // Fetch post data
+      // Fetch post data with basic fields
       const { data: postData, error: postError } = await supabase
         .from('posts')
         .select('*')
         .eq('id', id)
         .single()
 
-      if (postError) {
-        console.error('Error fetching post:', postError)
-        throw postError
-      }
+      if (postError) throw postError
 
-      console.log('Post data:', postData)
+      // Process the post data to ensure we have all needed fields
+      const processedPostData = {
+        ...postData,
+        tag_names: postData.tag_names || [],
+        interest_names: postData.interest_names || []
+      }
 
       // Fetch post development data
       const { data: devData, error: devError } = await supabase
@@ -104,13 +116,15 @@ export default function PostWriter() {
         .limit(1)
         .single()
 
-      if (devError && devError.code !== 'PGRST116') {
-        console.error('Error fetching development data:', devError)
-        throw devError
+      if (devError) {
+        if (devError.code === 'PGRST116') {
+          // No existing development data found, will create new record
+        } else {
+          throw devError
+        }
       }
 
-      console.log('Development data:', devData)
-
+      let finalDevData = devData
       // If no development data exists, create initial record
       if (!devData) {
         const { data: newDev, error: createError } = await supabase
@@ -118,46 +132,57 @@ export default function PostWriter() {
           .insert([{
             post_id: id,
             status: DEVELOPMENT_STEPS[0].label.toLowerCase(),
-            version: 1
+            version: 1,
+            content: processedPostData.brief_description || '',
+            ideas: { ideas: [], relatedTopics: [], audiences: [], childPosts: [], futurePosts: [] }
           }])
           .select()
           .single()
 
-        if (createError) {
-          console.error('Error creating development record:', createError)
-          throw createError
-        }
+        if (createError) throw createError
 
-        console.log('Created new development record:', newDev)
         setDevelopmentId(newDev.id)
+        finalDevData = newDev
       } else {
         setDevelopmentId(devData.id)
       }
 
-      setPost(postData)
+      // Combine post and development data
+      const combinedData = {
+        ...processedPostData,
+        development: finalDevData
+      }
+
+      setPost(combinedData)
     } catch (error) {
-      console.error('Error in fetchPost:', error)
+      // Handle error silently
     } finally {
       setLoading(false)
     }
   }
 
   const handleSave = async (updatedData) => {
-    if (!developmentId) {
-      console.error('No development ID found')
-      return
-    }
+    if (!developmentId) return
 
     try {
       setSaving(true)
       
+      // If we're in the ideation step, update the post brief description as well
+      if (activeStep === 0 && updatedData.content !== undefined && updatedData.content.trim() !== '') {
+        const { error: postError } = await supabase
+          .from('posts')
+          .update({ brief_description: updatedData.content })
+          .eq('id', id)
+
+        if (postError) throw postError
+      }
+
       // Update existing development record
       const { error: devError } = await supabase
         .from('post_developments')
         .update({
           status: DEVELOPMENT_STEPS[activeStep].label.toLowerCase(),
-          ...updatedData,
-          updated_at: new Date().toISOString()
+          ...updatedData
         })
         .eq('id', developmentId)
 
@@ -166,6 +191,9 @@ export default function PostWriter() {
       // Update local state
       setPost(prev => ({
         ...prev,
+        brief_description: activeStep === 0 && updatedData.content !== undefined && updatedData.content.trim() !== '' 
+          ? updatedData.content 
+          : prev.brief_description,
         development: {
           ...prev.development,
           ...updatedData,
@@ -173,7 +201,7 @@ export default function PostWriter() {
         }
       }))
     } catch (error) {
-      console.error('Error saving post development:', error)
+      // Handle error silently
     } finally {
       setSaving(false)
     }
@@ -207,6 +235,61 @@ export default function PostWriter() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Post Information Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="overline" color="text.secondary">
+              Brief Description
+            </Typography>
+            <Typography variant="body1">
+              {post?.brief_description || 'No brief description available'}
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          {/* Tags and Interests side by side */}
+          <Box sx={{ display: 'flex', gap: 4 }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="overline" color="text.secondary" gutterBottom>
+                Tags
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {post?.tag_names?.map((tag, index) => (
+                  <Chip
+                    key={`tag-${index}`}
+                    label={tag}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                ))}
+              </Stack>
+            </Box>
+
+            <Divider orientation="vertical" flexItem />
+
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="overline" color="text.secondary" gutterBottom>
+                Interests
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {post?.interest_names?.map((interest, index) => (
+                  <Chip
+                    key={`interest-${index}`}
+                    label={interest}
+                    size="small"
+                    color="secondary"
+                    variant="outlined"
+                  />
+                ))}
+              </Stack>
+            </Box>
+          </Box>
+        </Stack>
+      </Paper>
+
       {/* Development Progress */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Stepper activeStep={activeStep} alternativeLabel>
@@ -226,7 +309,9 @@ export default function PostWriter() {
       {/* Current Step Content */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <CurrentStepComponent
-          data={post?.development}
+          data={{
+            ...post?.development
+          }}
           onUpdate={handleSave}
         />
       </Paper>

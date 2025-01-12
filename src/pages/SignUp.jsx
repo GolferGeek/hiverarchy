@@ -32,20 +32,14 @@ function SignUp() {
     try {
       setError('')
       setLoading(true)
-      console.log('Attempting signup with:', { email }) // Don't log password
-      const { error, data } = await signUp({ email, password })
-      
-      if (error) {
-        console.error('Signup error details:', error)
-        throw error
-      }
 
-      console.log('Signup successful:', data)
-      setMessage('Registration successful! Please check your email to confirm your account.')
-      // Don't navigate immediately as user needs to confirm their email
+      const { data, error } = await signUp({ email, password })
+
+      if (error) throw error
+
+      navigate('/login')
     } catch (error) {
-      console.error('Full error object:', error)
-      setError('Failed to create account: ' + error.message)
+      setError(error.message)
     } finally {
       setLoading(false)
     }

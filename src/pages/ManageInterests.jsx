@@ -196,42 +196,27 @@ function ManageInterests() {
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this interest?')) {
-      try {
-        console.log('Attempting to delete interest:', id)
-        console.log('Current user:', user.id)
-        
-        // First verify the interest exists and belongs to the user
-        const { data: existingInterest, error: fetchError } = await supabase
-          .from('interests')
-          .select('*')
-          .eq('id', id)
-          .eq('user_id', user.id)
-          .single()
+    if (!user?.id) return
 
-        console.log('Existing interest:', existingInterest)
-        if (fetchError) {
-          console.error('Error fetching interest:', fetchError)
-          return
-        }
+    try {
+      const { data: existingInterest, error: fetchError } = await supabase
+        .from('interests')
+        .select('*')
+        .eq('id', id)
+        .single()
 
-        // Then delete it
-        const { error: deleteError } = await supabase
-          .from('interests')
-          .delete()
-          .eq('id', id)
-          .eq('user_id', user.id)
+      if (fetchError) throw fetchError
 
-        if (deleteError) {
-          console.error('Error deleting interest:', deleteError)
-          return
-        }
+      const { error: deleteError } = await supabase
+        .from('interests')
+        .delete()
+        .eq('id', id)
 
-        console.log('Interest deleted successfully')
-        fetchInterests()
-      } catch (error) {
-        console.error('Error in delete process:', error)
-      }
+      if (deleteError) throw deleteError
+
+      setInterests(interests.filter(interest => interest.id !== id))
+    } catch (error) {
+      setError('Failed to delete interest')
     }
   }
 

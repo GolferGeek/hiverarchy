@@ -14,13 +14,10 @@ export default function EditPost() {
   const navigate = useNavigate()
   const [post, setPost] = useState({
     title: '',
+    brief_description: '',
     content: '',
-    excerpt: '',
-    interest_ids: [],
-    interest_names: [],
-    tag_ids: [],
     tag_names: [],
-    images: []
+    interest_names: []
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -114,12 +111,12 @@ export default function EditPost() {
         .from('posts')
         .update({
           title: post.title,
+          brief_description: post.brief_description,
           content: post.content,
-          excerpt: post.excerpt,
-          interest_ids: post.interest_ids,
-          interest_names: post.interest_names,
-          tag_ids: post.tag_ids,
           tag_names: post.tag_names,
+          tag_ids: post.tag_ids,
+          interest_names: post.interest_names,
+          interest_ids: post.interest_ids,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -169,24 +166,62 @@ export default function EditPost() {
     }
   }
 
-  const handleTagSelect = (tag) => {
-    setPost(prev => {
-      if (prev.tag_names.includes(tag)) {
-        return prev
+  const handleTagSelect = async (tag) => {
+    try {
+      // Check if tag already exists
+      let { data: existingTag, error: fetchError } = await supabase
+        .from('tags')
+        .select('id, name')
+        .eq('name', tag)
+        .single()
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError
       }
-      return {
-        ...prev,
-        tag_names: [...prev.tag_names, tag]
+
+      // If tag doesn't exist, create it
+      if (!existingTag) {
+        const { data: newTag, error: insertError } = await supabase
+          .from('tags')
+          .insert([{ name: tag }])
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+        existingTag = newTag
       }
-    })
-    setTagInput('')
+
+      // Update post state with both name and id
+      setPost(prev => {
+        if (prev.tag_names.includes(tag)) {
+          return prev
+        }
+        return {
+          ...prev,
+          tag_names: [...prev.tag_names, tag],
+          tag_ids: [...(prev.tag_ids || []), existingTag.id]
+        }
+      })
+      setTagInput('')
+    } catch (error) {
+      console.error('Error handling tag:', error)
+    }
   }
 
   const removeTag = (tagToRemove) => {
-    setPost(prev => ({
-      ...prev,
-      tag_names: prev.tag_names.filter(tag => tag !== tagToRemove)
-    }))
+    setPost(prev => {
+      const index = prev.tag_names.indexOf(tagToRemove)
+      const newTagNames = prev.tag_names.filter(tag => tag !== tagToRemove)
+      const newTagIds = [...(prev.tag_ids || [])]
+      if (index !== -1) {
+        newTagIds.splice(index, 1)
+      }
+      return {
+        ...prev,
+        tag_names: newTagNames,
+        tag_ids: newTagIds
+      }
+    })
   }
 
   const handleImageUpload = async (url) => {
@@ -284,13 +319,15 @@ export default function EditPost() {
 
             <Grid item xs={12}>
               <TextField
+                required
                 fullWidth
-                label="Excerpt"
                 multiline
-                rows={2}
-                value={post.excerpt}
-                onChange={(e) => setPost(prev => ({ ...prev, excerpt: e.target.value }))}
-                helperText="A brief summary of your post"
+                rows={3}
+                label="Brief Description"
+                placeholder="Enter a brief description of your post"
+                value={post.brief_description}
+                onChange={(e) => setPost(prev => ({ ...prev, brief_description: e.target.value }))}
+                sx={{ mb: 2 }}
               />
             </Grid>
 

@@ -104,7 +104,6 @@ function ViewPost() {
 
       if (error) throw error
 
-      console.log('Fetched images:', data)
       return data
     } catch (error) {
       console.error('Error fetching images:', error)

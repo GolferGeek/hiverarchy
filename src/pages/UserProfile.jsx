@@ -4,6 +4,7 @@ import MarkdownEditor from '../components/MarkdownEditor'
 import ImageUpload from '../components/ImageUpload'
 import { supabase } from '../lib/supabase'
 import { useAI } from '../services/ai/index.jsx'
+import { useProfile } from '../contexts/ProfileContext'
 
 const UserProfile = () => {
   const [username, setUsername] = useState('')
@@ -16,7 +17,9 @@ const UserProfile = () => {
   const [apiAnthropic, setApiAnthropic] = useState('')
   const [apiGrok, setApiGrok] = useState('')
   const [apiPerplexity, setApiPerplexity] = useState('')
-  const { loadServices } = useAI()
+  const [apiSerper, setApiSerper] = useState('')
+  const ai = useAI()
+  const { fetchProfiles } = useProfile()
 
   useEffect(() => {
     getProfile()
@@ -50,6 +53,7 @@ const UserProfile = () => {
         setApiAnthropic(data.api_anthropic || '')
         setApiGrok(data.api_grok || '')
         setApiPerplexity(data.api_perplexity || '')
+        setApiSerper(data.api_serper || '')
       }
     } catch (error) {
       console.error('Error fetching profile:', error.message)
@@ -73,6 +77,23 @@ const UserProfile = () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No user found')
 
+      // Validate username
+      if (!username.trim()) {
+        throw new Error('Username is required')
+      }
+
+      // Check if username is already taken (excluding current user)
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username.trim())
+        .neq('id', user.id)
+        .single()
+
+      if (existingUser) {
+        throw new Error('Username is already taken')
+      }
+
       // Extract filename from full URL for storage
       let logoFilename = null
       if (logo) {
@@ -82,14 +103,15 @@ const UserProfile = () => {
 
       const updates = {
         id: user.id,
-        username,
+        username: username.trim(),
         resume,
-        logo: logoFilename,  // Store just the filename
+        logo: logoFilename,
         tagline,
         'api_openai': apiOpenai,
         'api_anthropic': apiAnthropic,
         'api_grok': apiGrok,
         'api_perplexity': apiPerplexity,
+        'api_serper': apiSerper,
         updated_at: new Date().toISOString()
       }
 
@@ -99,12 +121,18 @@ const UserProfile = () => {
 
       if (error) throw error
       
-      await loadServices()
+      // Refresh AI services if available
+      if (ai?.loadServices) {
+        await ai.loadServices()
+      }
+
+      // Refresh profiles to update navbar and other components
+      await fetchProfiles()
       
       setMessage('Profile updated successfully')
     } catch (error) {
-      console.error('Error updating profile:', error.message)
-      setMessage('Error updating profile')
+      console.error('Error updating profile:', error)
+      setMessage(`Error updating profile: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -206,6 +234,16 @@ const UserProfile = () => {
             onChange={(e) => setApiPerplexity(e.target.value)}
             type="password"
             disabled={loading}
+          />
+          <TextField
+            margin="normal"
+            fullWidth
+            label="Serper API Key"
+            value={apiSerper}
+            onChange={(e) => setApiSerper(e.target.value)}
+            type="password"
+            disabled={loading}
+            helperText="API key for Serper.dev Google search service"
           />
         </Box>
 

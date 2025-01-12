@@ -14,7 +14,7 @@ import {
 function Home() {
   const navigate = useNavigate()
   const { interests, loading: interestsLoading } = useInterests()
-  const { profile, loading: profileLoading, currentUsername } = useProfile()
+  const { profile, loading: profileLoading, currentUsername, getFullLogoUrl } = useProfile()
 
   const getImagePath = (interest) => {
     try {
@@ -59,49 +59,30 @@ function Home() {
             gap: 4,
             flexDirection: { xs: 'column', md: 'row' }
           }}>
-            {profile?.logo ? (
-              <Box sx={{ 
-                width: { xs: '200px', md: '300px' },
+            <Box sx={{ 
+              width: { xs: '200px', md: '300px' },
+              height: 'auto',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              '& img': {
+                maxWidth: '100%',
                 height: 'auto',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                '& img': {
-                  maxWidth: '100%',
-                  height: 'auto',
-                  display: 'block',
-                  margin: 0,
-                  borderRadius: 2,
-                  boxShadow: 3
-                }
-              }}>
-                <img 
-                  src={profile.logo}
-                  alt={profile.site_name || 'Site Logo'}
-                />
-              </Box>
-            ) : (
-              <Box sx={{ 
-                width: { xs: '200px', md: '300px' },
-                height: 'auto',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}>
-                <img 
-                  src="/images/gg-logo.jpg"
-                  alt="Default Logo"
-                  style={{ 
-                    maxWidth: '100%',
-                    height: 'auto',
-                    display: 'block',
-                    margin: 0,
-                    borderRadius: 2,
-                    boxShadow: 3
-                  }}
-                />
-              </Box>
-            )}
+                display: 'block',
+                margin: 0,
+                borderRadius: 2,
+                boxShadow: 3
+              }
+            }}>
+              <img 
+                src={getFullLogoUrl(profile?.logo)}
+                alt={profile?.site_name || 'Site Logo'}
+                onError={(e) => {
+                  console.log('Logo load error, using default')
+                  e.target.src = '/images/default.jpg'
+                }}
+              />
+            </Box>
             <Box sx={{ 
               textAlign: { xs: 'center', md: 'left' },
               flex: 1

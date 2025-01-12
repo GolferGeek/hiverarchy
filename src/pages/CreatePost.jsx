@@ -34,13 +34,10 @@ function CreatePost() {
   const [tagInput, setTagInput] = useState('')
   const [post, setPost] = useState({
     title: '',
+    brief_description: '',
     content: '',
-    excerpt: '',
-    interest_ids: [],
-    interest_names: [],
-    tag_ids: [],
     tag_names: [],
-    images: []
+    interest_names: []
   })
 
   const availableInterests = [
@@ -51,15 +48,13 @@ function CreatePost() {
   ]
 
   useEffect(() => {
-    console.log('Current user:', user)
-    console.log('Default user ID:', defaultUserId)
     if (!user) {
-      console.log('No user found, redirecting to home')
       navigate('/')
       return
     }
-    fetchAllTags()
-  }, [user, navigate])
+
+    fetchTags()
+  }, [user])
 
   async function fetchAllTags() {
     try {
@@ -214,68 +209,21 @@ function CreatePost() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    if (!user) {
-      console.error('No user found during submission')
-      setError('You must be logged in to create a post')
-      navigate('/')
-      return
-    }
-
+    setError('')
     setLoading(true)
-    setError(null)
 
     try {
-      console.log('Submitting post:', post)
-      // Generate new UUID for the post
-      const newId = crypto.randomUUID()
-      console.log('Generated ID:', newId)
-      
-      // Get the username from the user's email
-      const username = user.email.split('@')[0]
-      
-      // First create the post
-      const { error: postError } = await supabase
+      const { data, error } = await supabase
         .from('posts')
-        .insert([{
-          id: newId,
-          arc_id: state?.parentPost ? state.parentPost.arc_id : newId,
-          parent_id: state?.parentPost ? state.parentPost.id : null,
-          title: post.title,
-          content: post.content,
-          excerpt: post.excerpt,
-          user_id: user.id,
-          interest_ids: post.interest_ids,
-          interest_names: post.interest_names,
-          tag_ids: post.tag_ids,
-          tag_names: post.tag_names
-        }])
+        .insert([post])
+        .select()
+        .single()
 
-      if (postError) {
-        console.error('Supabase error:', postError)
-        throw postError
-      }
+      if (error) throw error
 
-      // Then create image records if there are any
-      if (post.images.length > 0) {
-        const { error: imageError } = await supabase
-          .from('images')
-          .insert(post.images.map(url => ({
-            url,
-            post_id: newId
-          })))
-
-        if (imageError) {
-          console.error('Error saving images:', imageError)
-          // Don't throw here, we still want to navigate to the post
-        }
-      }
-
-      console.log('Post created successfully, navigating to:', `/${username}/post/${newId}`)
-      navigate(`/${username}/post/${newId}`)
+      navigate(`/${username}/post/${data.id}`)
     } catch (error) {
-      console.error('Error creating post:', error)
-      setError('Failed to create post. Please try again.')
+      setError('Failed to create post')
     } finally {
       setLoading(false)
     }
@@ -327,13 +275,15 @@ function CreatePost() {
 
             <Grid item xs={12}>
               <TextField
+                required
                 fullWidth
-                label="Excerpt"
                 multiline
-                rows={2}
-                value={post.excerpt}
-                onChange={(e) => setPost(prev => ({ ...prev, excerpt: e.target.value }))}
-                helperText="A brief summary of your post"
+                rows={3}
+                label="Brief Description"
+                placeholder="Enter a brief description of your post"
+                value={post.brief_description}
+                onChange={(e) => setPost(prev => ({ ...prev, brief_description: e.target.value }))}
+                sx={{ mb: 2 }}
               />
             </Grid>
 

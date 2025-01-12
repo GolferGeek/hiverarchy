@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import ConfirmModal from './ConfirmModal'
 import { Paper, Typography, Button, Box, Chip, Stack, Alert } from '@mui/material'
 
-function PostCard({ post, onDelete, showInterest = true }) {
+export default function PostCard({ post, onDelete, showInterest = true }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const defaultUserId = import.meta.env.VITE_DEFAULT_USER
@@ -23,20 +23,13 @@ function PostCard({ post, onDelete, showInterest = true }) {
   }
 
   useEffect(() => {
-    console.log('Post data in PostCard:', post)
-    // First try to get image from post.images
-    if (post.images && post.images.length > 0 && post.images[0].url) {
-      setFirstImage(post.images[0].url)
-      return
+    if (post.content) {
+      const contentImage = extractFirstImageFromContent(post.content)
+      if (contentImage) {
+        setFirstImage(contentImage)
+      }
     }
-
-    // If no images array, try to extract from content
-    const contentImage = extractFirstImageFromContent(post.content)
-    if (contentImage) {
-      console.log('Found image in content:', contentImage)
-      setFirstImage(contentImage)
-    }
-  }, [post.content, post.images])
+  }, [post.content])
 
   async function handleDelete() {
     try {
@@ -104,7 +97,6 @@ function PostCard({ post, onDelete, showInterest = true }) {
             component="img"
             src={(() => {
               const imageUrl = post.images?.[0]?.url;
-              console.log('Image URL:', imageUrl);
               try {
                 const parsedUrls = JSON.parse(imageUrl);
                 return parsedUrls[0] || getDefaultImage();
@@ -189,20 +181,9 @@ function PostCard({ post, onDelete, showInterest = true }) {
               </Stack>
             )}
 
-            {/* Excerpt */}
-            <Typography 
-              variant="body2" 
-              color="text.secondary"
-              sx={{ 
-                mb: 2,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-              }}
-            >
-              {post.excerpt || 'No excerpt available'}
+            {/* Brief Description */}
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {post.brief_description || 'No brief description available'}
             </Typography>
 
             {/* Actions */}
@@ -259,5 +240,3 @@ function PostCard({ post, onDelete, showInterest = true }) {
     </>
   )
 }
-
-export default PostCard

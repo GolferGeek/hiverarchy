@@ -224,7 +224,7 @@ function IdeationList({ items, onDelete, onAdd, title, emptyMessage, onMove }) {
 export default function IdeationPanel({ data, onUpdate }) {
   const { getCurrentService, services } = useAI()
   const [activeTab, setActiveTab] = useState(0)
-  const [originalPrompt, setOriginalPrompt] = useState('')
+  const [originalPrompt, setOriginalPrompt] = useState(data?.content || '')
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
   const [ideas, setIdeas] = useState(data?.ideas?.ideas || [])
   const [relatedTopics, setRelatedTopics] = useState(data?.ideas?.relatedTopics || [])
@@ -237,14 +237,20 @@ export default function IdeationPanel({ data, onUpdate }) {
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState(false)
 
+  // Update originalPrompt when data.content changes
+  useEffect(() => {
+    if (data?.content) {
+      setOriginalPrompt(data.content)
+    }
+  }, [data?.content])
+
   // Debounced save function
   const debouncedSave = useCallback(
     debounce(async () => {
       try {
         setSaving(true)
         await onUpdate({
-          original: originalPrompt,
-          system_prompt: systemPrompt,
+          content: originalPrompt,
           ideas: {
             ideas,
             relatedTopics,
@@ -253,17 +259,17 @@ export default function IdeationPanel({ data, onUpdate }) {
             futurePosts
           }
         })
-        setSaveMessage('Changes saved')
+        setSaveMessage('Changes saved successfully')
         setSaveError(false)
       } catch (error) {
-        console.error('Error saving:', error)
         setSaveMessage('Error saving changes')
         setSaveError(true)
       } finally {
         setSaving(false)
+        setTimeout(() => setSaveMessage(''), 3000)
       }
     }, 1000),
-    [originalPrompt, systemPrompt, ideas, relatedTopics, audiences, childPosts, futurePosts]
+    [originalPrompt, ideas, relatedTopics, audiences, childPosts, futurePosts, onUpdate]
   )
 
   // Auto-save when content changes
@@ -272,13 +278,24 @@ export default function IdeationPanel({ data, onUpdate }) {
     return () => debouncedSave.cancel()
   }, [originalPrompt, systemPrompt, ideas, relatedTopics, audiences, childPosts, futurePosts])
 
-  const handlePromptSave = () => {
+  const handlePromptSave = async () => {
     setEditingPrompt(false)
-    debouncedSave()
+    try {
+      setSaving(true)
+      await onUpdate({
+        original: originalPrompt
+      })
+      setSaveMessage('Prompt saved successfully')
+      setSaveError(false)
+    } catch (error) {
+      setSaveMessage('Error saving prompt')
+      setSaveError(true)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleItemAdd = (section, item) => {
-    console.log('Adding item to section:', section, item)
     switch (section) {
       case 'ideas':
         setIdeas(prev => [...prev, item])
@@ -296,7 +313,8 @@ export default function IdeationPanel({ data, onUpdate }) {
         setFuturePosts(prev => [...prev, item])
         break
       default:
-        console.warn('Unknown section:', section)
+        // Silently ignore unknown sections
+        break
     }
   }
 
@@ -361,16 +379,66 @@ export default function IdeationPanel({ data, onUpdate }) {
         maxTokens: 2000
       })
 
-      // Process response...
+      // Handle different response formats
+      let responseText = ''
+      if (typeof response === 'string') {
+        responseText = response
+      } else if (response?.text) {
+        responseText = response.text
+      } else if (response?.content) {
+        responseText = response.content
+      } else if (response?.choices?.[0]?.text) {
+        responseText = response.choices[0].text
+      } else if (response?.choices?.[0]?.message?.content) {
+        responseText = response.choices[0].message.content
+      } else {
+        throw new Error('Unexpected response format from AI service')
+      }
+
+      // Process the response and extract sections
+      const sections = parseSections(responseText)
+      
+      // Update all sections at once
+      setIdeas(sections.ideas)
+      setRelatedTopics(sections.relatedTopics)
+      setAudiences(sections.audiences)
+      setChildPosts(sections.childPosts)
+      setFuturePosts(sections.futurePosts)
+
+      // Save the generated content
+      await onUpdate({
+        content: originalPrompt,
+        ideas: {
+          ideas: sections.ideas,
+          relatedTopics: sections.relatedTopics,
+          audiences: sections.audiences,
+          childPosts: sections.childPosts,
+          futurePosts: sections.futurePosts
+        }
+      })
+
+      setSaveMessage('Ideas generated successfully')
+      setSaveError(false)
     } catch (error) {
-      console.error('Error generating ideas:', error)
-      setError('Failed to generate ideas. Please try again.')
+      setSaveMessage('Failed to generate ideas. Please try again.')
+      setSaveError(true)
     } finally {
       setIsGenerating(false)
+      setTimeout(() => setSaveMessage(''), 3000)
     }
   }
 
   const parseSections = (text) => {
+    if (!text || typeof text !== 'string') {
+      return {
+        ideas: [],
+        relatedTopics: [],
+        audiences: [],
+        childPosts: [],
+        futurePosts: []
+      }
+    }
+
     const sections = {
       ideas: [],
       relatedTopics: [],
@@ -411,8 +479,6 @@ export default function IdeationPanel({ data, onUpdate }) {
           break
       }
 
-      console.log('Processing section:', header, 'mapped to:', currentSection)
-
       if (currentSection) {
         // Extract items (lines starting with - or •)
         const items = trimmedPart
@@ -443,13 +509,9 @@ export default function IdeationPanel({ data, onUpdate }) {
           })
           .filter(item => item.length > 0)
 
-        console.log(`Found ${items.length} items in section ${currentSection}:`, items)
         sections[currentSection].push(...items)
       }
     })
-
-    // Log the parsed sections for debugging
-    console.log('Final parsed sections:', sections)
 
     return sections
   }
@@ -504,10 +566,13 @@ export default function IdeationPanel({ data, onUpdate }) {
 
   return (
     <Box>
-      {/* Original Prompt Section */}
+      {/* Prompt Input Section */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Original Post Concept
+          Ideation Prompt
+        </Typography>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Enter a prompt to generate ideas based on your post's concept. Be specific about what aspects you want to explore.
         </Typography>
         <TextField
           fullWidth
@@ -515,7 +580,7 @@ export default function IdeationPanel({ data, onUpdate }) {
           rows={3}
           value={originalPrompt}
           onChange={(e) => setOriginalPrompt(e.target.value)}
-          placeholder="Enter your initial post concept here..."
+          placeholder="Enter your prompt for idea generation..."
           sx={{ mb: 2 }}
         />
         
@@ -551,26 +616,12 @@ export default function IdeationPanel({ data, onUpdate }) {
           )}
         </Box>
 
-        {/* Original Prompt Section */}
-        <Box sx={{ mt: 2, mb: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Ideation Prompt
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={2}
-            value={originalPrompt}
-            onChange={(e) => setOriginalPrompt(e.target.value)}
-            placeholder="Enter your topic for ideation..."
-          />
-        </Box>
-
         <Button
           variant="contained"
           onClick={handleGenerate}
           disabled={isGenerating || !originalPrompt.trim()}
           startIcon={isGenerating ? <CircularProgress size={20} /> : <RefreshIcon />}
+          sx={{ mt: 2 }}
         >
           {isGenerating ? 'Generating...' : 'Generate Ideas'}
         </Button>
