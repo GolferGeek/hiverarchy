@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import ImageUpload from '../components/ImageUpload'
 import MarkdownEditor from '../components/MarkdownEditor'
 import { useAuth } from '../contexts/AuthContext'
+import { useProfile } from '../contexts/ProfileContext'
 import {
   Container,
   Paper,
@@ -27,6 +28,7 @@ function CreatePost() {
   const navigate = useNavigate()
   const { state } = useLocation()
   const { user } = useAuth()
+  const { currentUsername } = useProfile()
   const defaultUserId = import.meta.env.VITE_DEFAULT_USER
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -37,7 +39,10 @@ function CreatePost() {
     brief_description: '',
     content: '',
     tag_names: [],
-    interest_names: []
+    tag_ids: [],
+    interest_names: [],
+    interest_ids: [],
+    images: []
   })
 
   const availableInterests = [
@@ -53,7 +58,7 @@ function CreatePost() {
       return
     }
 
-    fetchTags()
+    fetchAllTags()
   }, [user])
 
   async function fetchAllTags() {
@@ -213,8 +218,11 @@ function CreatePost() {
     setError(null)
 
     try {
-      // Create the post with post_writer initialized
-      const { data, error } = await supabase
+      // For child posts, use parent's arc_id, otherwise generate a new one
+      const arc_id = state?.parentPost ? state.parentPost.arc_id : crypto.randomUUID()
+
+      // Create the post
+      const { data: newPost, error: createError } = await supabase
         .from('posts')
         .insert([{
           title: post.title,
@@ -225,6 +233,8 @@ function CreatePost() {
           interest_names: post.interest_names,
           interest_ids: post.interest_ids,
           user_id: user.id,
+          arc_id: arc_id,
+          parent_id: state?.parentPost?.id || null,
           post_writer: {
             status: 'child_posts',
             version: 1,
@@ -241,7 +251,17 @@ function CreatePost() {
         .select()
         .single()
 
-      if (error) throw error
+      if (createError) throw createError
+
+      // If this is not a child post, update arc_id to be the post's own ID
+      if (!state?.parentPost) {
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ arc_id: newPost.id })
+          .eq('id', newPost.id)
+
+        if (updateError) throw updateError
+      }
 
       // Handle image uploads if any
       if (post.images && post.images.length > 0) {
@@ -250,14 +270,14 @@ function CreatePost() {
           .insert(
             post.images.map(image => ({
               url: image.url,
-              post_id: data.id
+              post_id: newPost.id
             }))
           )
 
         if (imageError) throw imageError
       }
 
-      navigate(`/${user.id}/post/${data.id}`)
+      navigate(`/${currentUsername}/post/${newPost.id}`)
     } catch (error) {
       console.error('Error creating post:', error)
       setError('Failed to create post. Please try again.')
