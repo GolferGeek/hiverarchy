@@ -69,6 +69,7 @@ function App() {
                       <Routes>
                         {/* Public routes - no username needed */}
                         <Route path="/" element={<Welcome />} />
+                        <Route path="/welcome" element={<Welcome />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<SignUp />} />
                         

@@ -12,12 +12,6 @@ export default function Welcome() {
   const { userProfile } = useProfile()
   const { darkMode } = useTheme()
 
-  useEffect(() => {
-    if (user && userProfile?.username) {
-      navigate(`/${userProfile.username}`)
-    }
-  }, [user, userProfile, navigate])
-
   return (
     <Container maxWidth="lg">
       <Box sx={{ 
