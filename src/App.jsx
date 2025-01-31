@@ -34,6 +34,9 @@ const RouteGuard = ({ children }) => {
   const [isProcessing, setIsProcessing] = useState(true)
   const [redirectTo, setRedirectTo] = useState(null)
 
+  // Skip redirection for auth routes
+  const isAuthRoute = location.pathname === '/login' || location.pathname === '/signup'
+
   useEffect(() => {
     const setupBlogProfile = async () => {
       try {
@@ -70,6 +73,11 @@ const RouteGuard = ({ children }) => {
   // Check redirection in a separate effect
   useEffect(() => {
     const checkRedirection = async () => {
+      // Skip redirection for auth routes
+      if (isAuthRoute) {
+        return
+      }
+
       if (!isProcessing && !profileLoading) {
         const redirectPath = await getRedirectPath(location.pathname, blogProfile)
         console.log('Checking redirection:', { 
@@ -82,10 +90,10 @@ const RouteGuard = ({ children }) => {
     }
 
     checkRedirection()
-  }, [location.pathname, blogProfile, isProcessing, profileLoading])
+  }, [location.pathname, blogProfile, isProcessing, profileLoading, isAuthRoute])
 
   // Show loading state while processing or waiting for profile
-  if (isProcessing || profileLoading) {
+  if ((isProcessing || profileLoading) && !isAuthRoute) {
     console.log('RouteGuard loading:', { isProcessing, profileLoading })
     return (
       <Box sx={{ 
@@ -100,7 +108,7 @@ const RouteGuard = ({ children }) => {
   }
 
   // Handle redirection
-  if (redirectTo) {
+  if (redirectTo && !isAuthRoute) {
     console.log('Redirecting to:', redirectTo)
     return <Navigate to={redirectTo} replace />
   }
@@ -113,7 +121,7 @@ const RouteGuard = ({ children }) => {
 
   if (isProtectedRoute && !user) {
     console.log('Protected route access denied')
-    return <Navigate to="/" replace />
+    return <Navigate to="/login" replace />
   }
 
   return children
@@ -127,102 +135,106 @@ function App() {
           <ProfileProvider>
             <InterestProvider>
               <AIProvider>
-                <RouteGuard>
-                  <Navbar />
-                  <main className="container">
-                    <Suspense fallback={<div>Loading...</div>}>
-                      <Routes>
-                        {/* Root route */}
-                        <Route path="/" element={
-                          shouldShowWelcomePage() ? 
-                            <Welcome /> : 
-                            <Home />
-                        } />
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Routes>
+                    {/* Auth routes - outside RouteGuard */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<SignUp />} />
 
-                        {/* Auth routes */}
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/signup" element={<SignUp />} />
-                        
-                        {/* Direct routes (no username) */}
-                        <Route path="/home" element={<Home />} />
-                        <Route path="/resume" element={<Resume />} />
-                        <Route path="/post/:id" element={<ViewPost />} />
-                        <Route path="/interest/:interest" element={<InterestPage />} />
-                        <Route path="/create" element={
-                          <ProtectedRoute>
-                            <CreatePost />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/edit/:id" element={
-                          <ProtectedRoute>
-                            <EditPost />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/writer/:id" element={
-                          <ProtectedRoute>
-                            <PostWriter />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/manage/interests" element={
-                          <ProtectedRoute>
-                            <ManageInterests />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/manage/profile" element={
-                          <ProtectedRoute>
-                            <UserProfile />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/manage/posts" element={
-                          <ProtectedRoute>
-                            <Posts />
-                          </ProtectedRoute>
-                        } />
-                        
-                        {/* Username prefixed routes (for hiverarchy.com) */}
-                        <Route path="/:username">
-                          <Route index element={<Home />} />
-                          <Route path="resume" element={<Resume />} />
-                          <Route path="post/:id" element={<ViewPost />} />
-                          <Route path="interest/:interest" element={<InterestPage />} />
-                          <Route path="create" element={
-                            <ProtectedRoute>
-                              <CreatePost />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="edit/:id" element={
-                            <ProtectedRoute>
-                              <EditPost />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="writer/:id" element={
-                            <ProtectedRoute>
-                              <PostWriter />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="manage/interests" element={
-                            <ProtectedRoute>
-                              <ManageInterests />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="manage/profile" element={
-                            <ProtectedRoute>
-                              <UserProfile />
-                            </ProtectedRoute>
-                          } />
-                          <Route path="manage/posts" element={
-                            <ProtectedRoute>
-                              <Posts />
-                            </ProtectedRoute>
-                          } />
-                        </Route>
-
-                        {/* Catch-all route */}
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                      </Routes>
-                    </Suspense>
-                  </main>
-                </RouteGuard>
+                    {/* All other routes - inside RouteGuard */}
+                    <Route path="*" element={
+                      <RouteGuard>
+                        <>
+                          <Navbar />
+                          <main className="container">
+                            <Routes>
+                              {/* Root route */}
+                              <Route path="/" element={
+                                shouldShowWelcomePage() ? 
+                                  <Welcome /> : 
+                                  <Home />
+                              } />
+                              
+                              {/* Direct routes (no username) */}
+                              <Route path="/home" element={<Home />} />
+                              <Route path="/resume" element={<Resume />} />
+                              <Route path="/post/:id" element={<ViewPost />} />
+                              <Route path="/interest/:interest" element={<InterestPage />} />
+                              <Route path="/create" element={
+                                <ProtectedRoute>
+                                  <CreatePost />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/edit/:id" element={
+                                <ProtectedRoute>
+                                  <EditPost />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/writer/:id" element={
+                                <ProtectedRoute>
+                                  <PostWriter />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/manage/interests" element={
+                                <ProtectedRoute>
+                                  <ManageInterests />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/manage/profile" element={
+                                <ProtectedRoute>
+                                  <UserProfile />
+                                </ProtectedRoute>
+                              } />
+                              <Route path="/manage/posts" element={
+                                <ProtectedRoute>
+                                  <Posts />
+                                </ProtectedRoute>
+                              } />
+                              
+                              {/* Username prefixed routes (for hiverarchy.com) */}
+                              <Route path="/:username">
+                                <Route index element={<Home />} />
+                                <Route path="resume" element={<Resume />} />
+                                <Route path="post/:id" element={<ViewPost />} />
+                                <Route path="interest/:interest" element={<InterestPage />} />
+                                <Route path="create" element={
+                                  <ProtectedRoute>
+                                    <CreatePost />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="edit/:id" element={
+                                  <ProtectedRoute>
+                                    <EditPost />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="writer/:id" element={
+                                  <ProtectedRoute>
+                                    <PostWriter />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="manage/interests" element={
+                                  <ProtectedRoute>
+                                    <ManageInterests />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="manage/profile" element={
+                                  <ProtectedRoute>
+                                    <UserProfile />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="manage/posts" element={
+                                  <ProtectedRoute>
+                                    <Posts />
+                                  </ProtectedRoute>
+                                } />
+                              </Route>
+                            </Routes>
+                          </main>
+                        </>
+                      </RouteGuard>
+                    } />
+                  </Routes>
+                </Suspense>
               </AIProvider>
             </InterestProvider>
           </ProfileProvider>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
+import { shouldShowUsernameInUrl } from '../utils/urlUtils'
 import {
   Container,
   Box,
@@ -48,11 +49,13 @@ function Login() {
         attempts++
       }
 
-      // Navigate to the user's homepage
+      // Navigate to the appropriate path based on domain
       if (userProfile?.username) {
-        navigate(`/${userProfile.username}`)
+        const basePath = shouldShowUsernameInUrl() ? `/${userProfile.username}` : ''
+        navigate(basePath || '/')
       } else {
-        navigate('/manage/profile') // If no username set, go to profile setup
+        // For profile setup, don't include username in path
+        navigate('/manage/profile')
       }
 
     } catch (error) {
