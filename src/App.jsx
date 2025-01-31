@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { InterestProvider } from './contexts/InterestContext'
 import { ProfileProvider, useProfile } from './contexts/ProfileContext'
@@ -7,8 +7,11 @@ import { AIProvider } from './services/ai/index.jsx'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import Welcome from './components/Welcome'
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import './styles/global.css'
+import { shouldShowWelcomePage, getRedirectPath, isValidPath, getEffectiveUsername } from './utils/urlUtils'
+import { supabase } from './lib/supabase'
+import { Box, CircularProgress } from '@mui/material'
 
 const Home = lazy(() => import('./pages/Home'))
 const Login = lazy(() => import('./pages/Login'))
@@ -26,37 +29,99 @@ const PostWriter = lazy(() => import('./pages/PostWriter'))
 // Route guard component to check for username
 const RouteGuard = ({ children }) => {
   const { user } = useAuth()
-  const navigate = useNavigate()
+  const { blogProfile, setBlogProfile, loading: profileLoading } = useProfile()
   const location = useLocation()
-  const params = useParams()
+  const [isProcessing, setIsProcessing] = useState(true)
+  const [redirectTo, setRedirectTo] = useState(null)
 
   useEffect(() => {
-    // Allow public routes: welcome page, login, signup, and viewing user blogs
-    const publicPaths = ['/', '/login', '/signup']
-    const isPublicPath = publicPaths.includes(location.pathname) || 
-                        location.pathname.match(/^\/[^/]+$/) || // User's blog home
-                        location.pathname.match(/^\/[^/]+\/post\/[^/]+$/) || // Viewing a post
-                        location.pathname.match(/^\/[^/]+\/interest\/[^/]+$/) || // Interest page
-                        location.pathname.match(/^\/[^/]+\/resume$/) // Resume page
+    const setupBlogProfile = async () => {
+      try {
+        // Only set blog profile if it's not already set
+        if (!blogProfile) {
+          const username = await getEffectiveUsername(null)
+          console.log('Setting up blog profile for username:', username)
+          
+          if (username) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('username', username)
+              .single()
 
-    if (!user && !isPublicPath) {
-      navigate('/')
+            if (profile) {
+              console.log('Found profile:', profile)
+              setBlogProfile(profile)
+            } else {
+              console.log('No profile found for username:', username)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in setupBlogProfile:', error)
+      } finally {
+        setIsProcessing(false)
+      }
     }
-  }, [user, location, navigate])
+
+    setupBlogProfile()
+  }, [blogProfile, setBlogProfile])
+
+  // Check redirection in a separate effect
+  useEffect(() => {
+    const checkRedirection = async () => {
+      if (!isProcessing && !profileLoading) {
+        const redirectPath = await getRedirectPath(location.pathname, blogProfile)
+        console.log('Checking redirection:', { 
+          currentPath: location.pathname, 
+          redirectPath,
+          blogProfile: blogProfile?.username
+        })
+        setRedirectTo(redirectPath)
+      }
+    }
+
+    checkRedirection()
+  }, [location.pathname, blogProfile, isProcessing, profileLoading])
+
+  // Show loading state while processing or waiting for profile
+  if (isProcessing || profileLoading) {
+    console.log('RouteGuard loading:', { isProcessing, profileLoading })
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  // Handle redirection
+  if (redirectTo) {
+    console.log('Redirecting to:', redirectTo)
+    return <Navigate to={redirectTo} replace />
+  }
+
+  // For protected routes, check user authentication
+  const isProtectedRoute = location.pathname.includes('/manage/') || 
+                          location.pathname.includes('/create') || 
+                          location.pathname.includes('/edit/') ||
+                          location.pathname.includes('/writer/')
+
+  if (isProtectedRoute && !user) {
+    console.log('Protected route access denied')
+    return <Navigate to="/" replace />
+  }
 
   return children
 }
 
 function App() {
   return (
-    <BrowserRouter future={{
-      v7_startTransition: true,
-      v7_relativeSplatPath: true,
-      v7_fetcherPersist: true,
-      v7_normalizeFormMethod: true,
-      v7_partialHydration: true,
-      v7_skipActionErrorRevalidation: true
-    }}>
+    <Router>
       <AuthProvider>
         <ThemeProvider>
           <ProfileProvider>
@@ -67,20 +132,59 @@ function App() {
                   <main className="container">
                     <Suspense fallback={<div>Loading...</div>}>
                       <Routes>
-                        {/* Public routes - no username needed */}
-                        <Route path="/" element={<Welcome />} />
-                        <Route path="/welcome" element={<Welcome />} />
+                        {/* Root route */}
+                        <Route path="/" element={
+                          shouldShowWelcomePage() ? 
+                            <Welcome /> : 
+                            <Home />
+                        } />
+
+                        {/* Auth routes */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<SignUp />} />
                         
-                        {/* Username-based routes */}
+                        {/* Direct routes (no username) */}
+                        <Route path="/home" element={<Home />} />
+                        <Route path="/resume" element={<Resume />} />
+                        <Route path="/post/:id" element={<ViewPost />} />
+                        <Route path="/interest/:interest" element={<InterestPage />} />
+                        <Route path="/create" element={
+                          <ProtectedRoute>
+                            <CreatePost />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/edit/:id" element={
+                          <ProtectedRoute>
+                            <EditPost />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/writer/:id" element={
+                          <ProtectedRoute>
+                            <PostWriter />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/manage/interests" element={
+                          <ProtectedRoute>
+                            <ManageInterests />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/manage/profile" element={
+                          <ProtectedRoute>
+                            <UserProfile />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/manage/posts" element={
+                          <ProtectedRoute>
+                            <Posts />
+                          </ProtectedRoute>
+                        } />
+                        
+                        {/* Username prefixed routes (for hiverarchy.com) */}
                         <Route path="/:username">
                           <Route index element={<Home />} />
                           <Route path="resume" element={<Resume />} />
                           <Route path="post/:id" element={<ViewPost />} />
                           <Route path="interest/:interest" element={<InterestPage />} />
-                          
-                          {/* Protected routes */}
                           <Route path="create" element={
                             <ProtectedRoute>
                               <CreatePost />
@@ -113,8 +217,8 @@ function App() {
                           } />
                         </Route>
 
-                        {/* Show welcome page for unknown routes */}
-                        <Route path="*" element={<Welcome />} />
+                        {/* Catch-all route */}
+                        <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Suspense>
                   </main>
@@ -124,7 +228,7 @@ function App() {
           </ProfileProvider>
         </ThemeProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </Router>
   )
 }
 

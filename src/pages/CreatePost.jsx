@@ -34,6 +34,7 @@ function CreatePost() {
   const [error, setError] = useState(null)
   const [tagSuggestions, setTagSuggestions] = useState([])
   const [tagInput, setTagInput] = useState('')
+  const [availableInterests, setAvailableInterests] = useState([])
   const [post, setPost] = useState({
     title: '',
     brief_description: '',
@@ -45,13 +46,6 @@ function CreatePost() {
     images: []
   })
 
-  const availableInterests = [
-    { id: '1c6d9fa6-908b-4e83-8c1e-3baf6571d6d9', value: 'coder', label: 'Coder' },
-    { id: '2a8b7c9d-456e-4f12-9a3b-8c7d6e5f4e3d', value: 'golfer', label: 'Golfer' },
-    { id: '3e4f5c6d-789a-4b1c-9d2e-1f2e3d4c5b6a', value: 'mentor', label: 'Mentor' },
-    { id: '4d5e6f7g-890b-4c2d-ae3f-2g3h4i5j6k7l', value: 'aging', label: 'Aging' }
-  ]
-
   useEffect(() => {
     if (!user) {
       navigate('/')
@@ -59,7 +53,33 @@ function CreatePost() {
     }
 
     fetchAllTags()
+    fetchInterests()
   }, [user])
+
+  async function fetchInterests() {
+    try {
+      if (!user?.id) {
+        console.log('No user ID available for fetching interests')
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('interests')
+        .select('id, name, title')
+        .eq('user_id', user.id)
+        .order('sequence')
+
+      if (error) throw error
+
+      setAvailableInterests(data.map(interest => ({
+        id: interest.id,
+        value: interest.name,
+        label: interest.title
+      })))
+    } catch (error) {
+      console.error('Error fetching interests:', error)
+    }
+  }
 
   async function fetchAllTags() {
     try {
@@ -86,14 +106,14 @@ function CreatePost() {
   const handleInterestChange = (interest) => {
     setPost(prev => {
       const interestId = interest.id
-      const interestLabel = interest.label
+      const interestName = interest.value
 
       // If interest is already selected, remove it
-      if (prev.interest_names.includes(interestLabel)) {
+      if (prev.interest_names.includes(interestName)) {
         return {
           ...prev,
           interest_ids: prev.interest_ids.filter(id => id !== interestId),
-          interest_names: prev.interest_names.filter(name => name !== interestLabel)
+          interest_names: prev.interest_names.filter(name => name !== interestName)
         }
       }
 
@@ -101,7 +121,7 @@ function CreatePost() {
       return {
         ...prev,
         interest_ids: [...prev.interest_ids, interestId],
-        interest_names: [...prev.interest_names, interestLabel]
+        interest_names: [...prev.interest_names, interestName]
       }
     })
   }
@@ -351,11 +371,11 @@ function CreatePost() {
               <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                 {availableInterests.map((interest) => (
                   <Chip
-                    key={interest.value}
+                    key={interest.id}
                     label={interest.label}
                     onClick={() => handleInterestChange(interest)}
-                    color={post.interest_names.includes(interest.label) ? 'primary' : 'default'}
-                    variant={post.interest_names.includes(interest.label) ? 'filled' : 'outlined'}
+                    color={post.interest_names.includes(interest.value) ? 'primary' : 'default'}
+                    variant={post.interest_names.includes(interest.value) ? 'filled' : 'outlined'}
                   />
                 ))}
               </Stack>

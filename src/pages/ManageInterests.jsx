@@ -39,8 +39,11 @@ function ManageInterests() {
     description: '',
     image_path: '',
     content: '',
-    name: ''
+    name: '',
+    sequence: 0
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!user || user.email !== 'golfergeek@gmail.com') {
@@ -99,7 +102,8 @@ function ManageInterests() {
           : interest.description || '',
         image_path: interest.image_path || '',
         content: interest.content || '',
-        name: interest.name || ''
+        name: interest.name || '',
+        sequence: interest.sequence || 0
       })
     } else {
       setEditingInterest(null)
@@ -108,7 +112,8 @@ function ManageInterests() {
         description: '',
         image_path: '',
         content: '',
-        name: ''
+        name: '',
+        sequence: 0
       })
     }
     setOpen(true)
@@ -122,7 +127,8 @@ function ManageInterests() {
       description: '',
       image_path: '',
       content: '',
-      name: ''
+      name: '',
+      sequence: 0
     })
   }
 
@@ -159,10 +165,21 @@ function ManageInterests() {
 
   const handleSubmit = async () => {
     try {
+      // First, make a select query to refresh the schema cache
+      await supabase
+        .from('interests')
+        .select('id')
+        .limit(1)
+
+      // Only include fields that exist in the database schema
       const submissionData = {
-        ...formData,
+        id: editingInterest ? editingInterest.id : crypto.randomUUID(),
+        title: formData.title,
         description: formData.description,
+        image_path: formData.image_path || '/images/default.jpg',
         name: formData.name || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        sequence: formData.sequence || 0,
+        content: formData.content || '',
         user_id: user.id
       }
 
@@ -174,16 +191,9 @@ function ManageInterests() {
 
         if (error) throw error
       } else {
-        // Generate a new UUID for the interest
-        const newId = crypto.randomUUID()
-        
         const { error } = await supabase
           .from('interests')
-          .insert([{
-            ...submissionData,
-            id: newId,
-            arcid: newId // Set arcid same as id for root interests
-          }])
+          .insert([submissionData])
 
         if (error) throw error
       }
@@ -276,7 +286,6 @@ function ManageInterests() {
           .insert([{
             ...interest,
             id: newId,
-            arcid: newId, // Set arcid same as id for root interests
             user_id: user.id
           }])
 
@@ -422,12 +431,23 @@ function ManageInterests() {
                 onChange={handleMarkdownChange('content')}
               />
             </Grid>
+            <Grid item xs={12}>
+              <TextField
+                name="sequence"
+                label="Sequence"
+                type="number"
+                value={formData.sequence}
+                onChange={handleChange}
+                fullWidth
+                margin="normal"
+              />
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained" color="primary">
-            Save
+            {editingInterest ? 'Save Changes' : 'Create Interest'}
           </Button>
         </DialogActions>
       </Dialog>
