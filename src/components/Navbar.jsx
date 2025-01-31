@@ -42,7 +42,7 @@ export default function Navbar() {
   }
 
   // Get the full logo URL - ensure we're getting it from the active profile
-  const logoUrl = isWelcomePage ? getFullLogoUrl(blogProfile?.logo) : getFullLogoUrl(activeProfile?.logo)
+  const logoUrl = isWelcomePage ? '/images/hiverarchy.jpeg' : getFullLogoUrl(activeProfile?.logo)
 
   return (
     <AppBar 
@@ -86,7 +86,8 @@ export default function Navbar() {
                 borderRadius: '4px'
               }}
               onError={(e) => {
-                e.target.src = '/images/default.jpg'
+                console.log('Logo load error, using default')
+                e.target.src = '/images/gg-logo.jpg'
               }}
             />
             {isWelcomePage ? 'Hiverarchy' : (blogProfile?.username || 'Hiverarchy')}

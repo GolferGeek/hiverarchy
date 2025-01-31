@@ -7,6 +7,7 @@ import { AIProvider } from './services/ai/index.jsx'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import Welcome from './components/Welcome'
+import DocumentHead from './components/DocumentHead'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import './styles/global.css'
 import { shouldShowWelcomePage, getRedirectPath, isValidPath, getEffectiveUsername } from './utils/urlUtils'
@@ -135,6 +136,7 @@ function App() {
           <ProfileProvider>
             <InterestProvider>
               <AIProvider>
+                <DocumentHead />
                 <Suspense fallback={<div>Loading...</div>}>
                   <Routes>
                     {/* Auth routes - outside RouteGuard */}
