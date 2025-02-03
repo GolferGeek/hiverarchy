@@ -9,6 +9,7 @@ import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SettingsIcon from '@mui/icons-material/Settings'
 import DescriptionIcon from '@mui/icons-material/Description'
 import { useState } from 'react'
+import { shouldShowUsernameInUrl } from '../utils/urlUtils'
 
 export default function Navbar() {
   const { user, signOut } = useAuth()
@@ -98,7 +99,7 @@ export default function Navbar() {
             <Button
               color="inherit"
               component={Link}
-              to={`/${blogProfile?.username}/resume`}
+              to={shouldShowUsernameInUrl() ? `/${blogProfile?.username}/resume` : '/resume'}
               startIcon={<DescriptionIcon />}
               size="small"
               sx={{ 
