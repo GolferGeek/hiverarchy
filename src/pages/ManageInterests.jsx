@@ -23,10 +23,15 @@ import {
   IconButton,
   Box,
   Grid,
+  Switch,
+  FormControlLabel,
+  Tooltip
 } from '@mui/material'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 
 function ManageInterests() {
   const { user } = useAuth()
@@ -44,6 +49,7 @@ function ManageInterests() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, interest: null, action: '' })
 
   useEffect(() => {
     if (!user || user.email !== 'golfergeek@gmail.com') {
@@ -83,9 +89,11 @@ function ManageInterests() {
         .from('interests')
         .select('*')
         .eq('user_id', user.id)
+        .order('sequence', { ascending: true })
         .order('title')
 
       if (error) throw error
+      console.log('Fetched interests:', data)
       setInterests(data)
     } catch (error) {
       console.error('Error fetching interests:', error)
@@ -180,7 +188,8 @@ function ManageInterests() {
         name: formData.name || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         sequence: formData.sequence || 0,
         content: formData.content || '',
-        user_id: user.id
+        user_id: user.id,
+        is_active: editingInterest ? editingInterest.is_active : true // Keep existing state or default to true for new
       }
 
       if (editingInterest) {
@@ -298,29 +307,59 @@ function ManageInterests() {
     fetchInterests()
   }
 
+  const handleToggleActive = async (interest) => {
+    try {
+      const newActiveState = !interest.is_active
+      console.log('Toggling interest:', interest.title, 'to:', newActiveState)
+      
+      const { error } = await supabase
+        .from('interests')
+        .update({ is_active: newActiveState })
+        .eq('id', interest.id)
+
+      if (error) throw error
+
+      console.log('Successfully updated interest active state')
+      
+      // Update local state
+      setInterests(interests.map(i => 
+        i.id === interest.id ? { ...i, is_active: newActiveState } : i
+      ))
+    } catch (error) {
+      console.error('Error toggling interest active state:', error)
+      alert('Failed to update interest status')
+    }
+  }
+
+  const handleConfirmToggle = (interest) => {
+    if (interest.is_active) {
+      // If deactivating, show confirmation dialog
+      setConfirmDialog({
+        open: true,
+        interest,
+        action: 'deactivate',
+        title: 'Deactivate Interest?',
+        message: 'This interest will be hidden from navigation and the home page. Users will not be able to access it. Continue?'
+      })
+    } else {
+      // If activating, no need for confirmation
+      handleToggleActive(interest)
+    }
+  }
+
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4" component="h1">
           Manage Interests
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={createInitialInterests}
-          >
-            Create Initial Interests
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddCircleOutlineOutlinedIcon />}
-            onClick={() => handleOpen()}
-          >
-            Add Interest
-          </Button>
-        </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddCircleOutlineOutlinedIcon />}
+          onClick={() => handleOpen()}
+        >
+          Add Interest
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -329,39 +368,37 @@ function ManageInterests() {
             <TableRow>
               <TableCell>Title</TableCell>
               <TableCell>Description</TableCell>
-              <TableCell>Image</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell align="center">Status</TableCell>
+              <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {interests.map((interest) => (
               <TableRow key={interest.id}>
                 <TableCell>{interest.title}</TableCell>
-                <TableCell>
-                  <Typography noWrap sx={{ maxWidth: 200 }}>
-                    {typeof interest.description === 'object' 
-                      ? JSON.stringify(interest.description).substring(0, 100)
-                      : (interest.description || '').substring(0, 100)}
-                    {(typeof interest.description === 'object' 
-                      ? JSON.stringify(interest.description).length > 100
-                      : (interest.description || '').length > 100) ? '...' : ''}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  {interest.image_path && (
-                    <Box
-                      component="img"
-                      src={interest.image_path}
-                      alt={interest.title}
-                      sx={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 1 }}
+                <TableCell>{interest.description}</TableCell>
+                <TableCell align="center">
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Tooltip title={interest.is_active ? 'Active' : 'Inactive'}>
+                      <IconButton size="small" sx={{ mr: 1 }}>
+                        {interest.is_active ? 
+                          <VisibilityIcon color="primary" /> : 
+                          <VisibilityOffIcon color="action" />
+                        }
+                      </IconButton>
+                    </Tooltip>
+                    <Switch
+                      checked={interest.is_active}
+                      onChange={() => handleConfirmToggle(interest)}
+                      color="primary"
                     />
-                  )}
+                  </Box>
                 </TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleOpen(interest)} color="primary">
+                <TableCell align="center">
+                  <IconButton onClick={() => handleOpen(interest)}>
                     <EditOutlinedIcon />
                   </IconButton>
-                  <IconButton onClick={() => handleDelete(interest.id)} color="error">
+                  <IconButton onClick={() => handleDelete(interest.id)}>
                     <DeleteOutlineOutlinedIcon />
                   </IconButton>
                 </TableCell>
@@ -448,6 +485,31 @@ function ManageInterests() {
           <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained" color="primary">
             {editingInterest ? 'Save Changes' : 'Create Interest'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={confirmDialog.open}
+        onClose={() => setConfirmDialog({ ...confirmDialog, open: false })}
+      >
+        <DialogTitle>{confirmDialog.title}</DialogTitle>
+        <DialogContent>
+          <Typography>{confirmDialog.message}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialog({ ...confirmDialog, open: false })}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              handleToggleActive(confirmDialog.interest)
+              setConfirmDialog({ ...confirmDialog, open: false })
+            }}
+            color="primary"
+            variant="contained"
+          >
+            Confirm
           </Button>
         </DialogActions>
       </Dialog>

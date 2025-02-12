@@ -18,6 +18,8 @@ import {
   Alert
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
+import { useInterests } from '../contexts/InterestContext'
+import ReactMarkdown from 'react-markdown'
 
 function InterestPage() {
   const navigate = useNavigate()
@@ -30,6 +32,7 @@ function InterestPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const isOwner = user?.id === interestData?.user_id
+  const { interests, loading: interestsLoading } = useInterests()
 
   useEffect(() => {
     let isMounted = true
@@ -82,42 +85,54 @@ function InterestPage() {
     }
   }, [interestName])
 
-  if (loading) {
+  useEffect(() => {
+    if (!interestsLoading) {
+      const foundInterest = interests.find(i => i.name === interestName)
+      
+      // If interest doesn't exist or is inactive (and user is not the owner), redirect to home
+      if (!foundInterest || (!foundInterest.is_active && (!user || user.email !== profile?.email))) {
+        navigate(`/${profile?.username || ''}`)
+        return
+      }
+      
+      setInterestData(foundInterest)
+      setLoading(false)
+    }
+  }, [interestName, interests, interestsLoading, user, profile, navigate])
+
+  if (loading || interestsLoading) {
     return (
-      <Box sx={{ 
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: 'flex', 
-        flexDirection: 'column', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        backgroundColor: 'background.default',
-        zIndex: 1000
-      }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Loading interest...</Typography>
       </Box>
     )
   }
 
-  if (error) {
+  if (!interestData) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-        <Button variant="contained" onClick={() => navigate('/')}>
-          Return to Home
-        </Button>
+      <Container>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Interest not found
+        </Typography>
       </Container>
     )
   }
 
   return (
     <Container maxWidth="lg">
+      {!interestData.is_active && (
+        <Box sx={{ 
+          bgcolor: 'warning.main', 
+          color: 'warning.contrastText', 
+          p: 2, 
+          mb: 2,
+          borderRadius: 1
+        }}>
+          <Typography>
+            This interest is currently inactive and is only visible to you as the owner.
+          </Typography>
+        </Box>
+      )}
       {/* Header Section */}
       <Box sx={{ mt: 4, mb: 6, textAlign: 'center' }}>
         <Typography 
