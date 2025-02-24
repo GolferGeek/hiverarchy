@@ -7,6 +7,7 @@ import CommentList from '../components/CommentList'
 import ConfirmModal from '../components/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
+import PostTree from '../components/PostTree'
 import {
   Container,
   Typography,
@@ -42,6 +43,7 @@ function ViewPost() {
   const isAuthor = user && post && user.id === post.user_id
   const isChildPost = post && post.arc_id && post.arc_id !== post.id
   const { currentUsername } = useProfile()
+  const [isArcMode, setIsArcMode] = useState(false)
 
   useEffect(() => {
     fetchPost()
@@ -64,6 +66,7 @@ function ViewPost() {
         fetchParentPost(post.parent_id)
       }
       fetchChildPosts(post.id)
+      setIsArcMode(post.arc_id && post.arc_id !== post.id)
     }
   }, [post])
 
@@ -175,6 +178,64 @@ function ViewPost() {
     setShowDeleteModal(true)
   }
 
+  const handlePostSelect = async (postId) => {
+    try {
+      // Fetch all data in parallel
+      const [postData, parentData, childData] = await Promise.all([
+        supabase
+          .from('posts')
+          .select(`
+            *,
+            images (
+              url
+            )
+          `)
+          .eq('id', postId)
+          .single()
+          .then(({ data, error }) => {
+            if (error) throw error
+            return {
+              ...data,
+              username: currentUsername
+            }
+          }),
+        supabase
+          .from('posts')
+          .select('*')
+          .eq('id', postId)
+          .single()
+          .then(({ data, error }) => {
+            if (error) return null
+            return {
+              ...data,
+              username: currentUsername
+            }
+          }),
+        supabase
+          .from('posts')
+          .select('id, title, created_at')
+          .eq('parent_id', postId)
+          .order('created_at', { ascending: true })
+          .then(({ data, error }) => {
+            if (error) return []
+            const postsWithUsername = data.map(post => ({
+              ...post,
+              username: currentUsername
+            }))
+            return Array.from(new Map(postsWithUsername.map(post => [post.id, post])).values())
+          })
+      ])
+
+      // Update all state at once
+      setPost(postData)
+      if (parentData) setParentPost(parentData)
+      setChildPosts(childData)
+    } catch (error) {
+      console.error('Error fetching post:', error)
+      setError('Failed to load post')
+    }
+  }
+
   if (loading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -201,198 +262,241 @@ function ViewPost() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        {/* Post Header */}
-        <Box sx={{ mb: 4 }}>
-          {post.parent_id && parentPost && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                Part of thread: <Link to={`/${parentPost.username}/post/${parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
-                  {parentPost.title}
-                </Link>
-              </Typography>
-            </Box>
-          )}
-          <Typography variant="h4" gutterBottom>
-            {post.title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            {format(new Date(post.created_at), 'MMMM d, yyyy')}
-          </Typography>
-          <Box sx={{ 
-            display: 'flex', 
-            gap: 4, 
-            mt: 2, 
-            mb: 2 
-          }}>
-            <Box sx={{ 
-              flex: 1,
-              p: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 1,
-            }}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Interests
-              </Typography>
-              {post.interest_names && post.interest_names.map((interest, index) => (
-                <Chip
-                  key={index}
-                  label={interest}
-                  component={Link}
-                  to={`/interest/${interest}`}
-                  clickable
-                  sx={{ mr: 1, mb: 1 }}
-                />
-              ))}
-            </Box>
-            <Box sx={{ 
-              flex: 1,
-              p: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 1,
-            }}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Tags
-              </Typography>
-              {post.tag_names && post.tag_names.map((tag, index) => (
-                <Chip
-                  key={index}
-                  label={tag}
-                  variant="outlined"
-                  size="small"
-                  sx={{ mr: 1, mb: 1 }}
-                />
-              ))}
-            </Box>
-          </Box>
-          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-            {isAuthor && (
-              <>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  component={Link}
-                  to={`/${currentUsername}/create`}
-                  state={{ parentPost: post }}
-                >
-                  Create Child Post
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  component={Link}
-                  to={`/${currentUsername}/edit/${post.id}`}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DeleteIcon />}
-                  onClick={handleDeleteClick}
-                >
-                  Delete
-                </Button>
-                <WriterButton postId={post.id} />
-              </>
-            )}
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
-        {/* Post Content */}
-        <Box 
+      <Grid 
+        container 
+        spacing={0} 
+        sx={{ 
+          width: '100%',
+          margin: 0,
+          position: 'relative',
+          minHeight: '500px',
+          display: 'flex',
+          flexDirection: 'row',  // Ensure horizontal layout
+          flexWrap: 'nowrap',    // Prevent wrapping
+          gap: 4                 // Space between items
+        }}
+      >
+        {/* Post Tree */}
+        <Grid 
+          item 
           sx={{ 
-            '& img': {
-              maxWidth: '400px',
-              maxHeight: '300px',
-              height: 'auto',
-              objectFit: 'contain'
-            }
+            position: 'relative',
+            width: '375px',      // Fixed width from PostTree component
+            flexShrink: 0,       // Prevent shrinking
+            minHeight: '500px'
           }}
         >
-          <MDEditor.Markdown source={post.content} />
-        </Box>
+          <PostTree 
+            arcId={post.arc_id || post.id} 
+            currentPostId={post.id}
+            onPostSelect={handlePostSelect}
+            isArcMode={isArcMode}
+          />
+        </Grid>
 
-        {/* Child Posts Section */}
-        {childPosts.length > 0 && (
-          <>
-            <Divider sx={{ my: 4 }} />
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Continued in:
+        {/* Main Content */}
+        <Grid 
+          item 
+          sx={{ 
+            position: 'relative',
+            flex: 1,             // Take remaining space
+            minHeight: '500px'
+          }}
+        >
+          <Paper elevation={3} sx={{ p: 4, minHeight: '500px' }}>
+            {/* Post Header */}
+            <Box sx={{ mb: 4 }}>
+              {post.parent_id && parentPost && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Part of thread: <Link to={`/${parentPost.username}/post/${parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
+                      {parentPost.title}
+                    </Link>
+                  </Typography>
+                </Box>
+              )}
+              <Typography variant="h4" gutterBottom>
+                {post.title}
               </Typography>
-              <Stack spacing={2}>
-                {childPosts.map((childPost) => (
-                  <Box 
-                    key={childPost.id}
-                    component={Link}
-                    to={`/${childPost.username}/post/${childPost.id}`}
-                    sx={{
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      '&:hover': {
-                        backgroundColor: 'action.hover',
-                      }
-                    }}
-                  >
-                    <Typography variant="subtitle1">
-                      {childPost.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {format(new Date(childPost.created_at), 'MMMM d, yyyy')}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {format(new Date(post.created_at), 'MMMM d, yyyy')}
+              </Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 4, 
+                mt: 2, 
+                mb: 2 
+              }}>
+                <Box sx={{ 
+                  flex: 1,
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Interests
+                  </Typography>
+                  {post.interest_names && post.interest_names.map((interest, index) => (
+                    <Chip
+                      key={index}
+                      label={interest}
+                      component={Link}
+                      to={`/interest/${interest}`}
+                      clickable
+                      sx={{ mr: 1, mb: 1 }}
+                    />
+                  ))}
+                </Box>
+                <Box sx={{ 
+                  flex: 1,
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Tags
+                  </Typography>
+                  {post.tag_names && post.tag_names.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={tag}
+                      variant="outlined"
+                      size="small"
+                      sx={{ mr: 1, mb: 1 }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                {isAuthor && (
+                  <>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      component={Link}
+                      to={`/${currentUsername}/create`}
+                      state={{ parentPost: post }}
+                    >
+                      Create Child Post
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                      component={Link}
+                      to={`/${currentUsername}/edit/${post.id}`}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      onClick={handleDeleteClick}
+                    >
+                      Delete
+                    </Button>
+                    <WriterButton postId={post.id} />
+                  </>
+                )}
+              </Box>
             </Box>
-          </>
-        )}
 
-        <Divider sx={{ my: 4 }} />
+            <Divider sx={{ my: 3 }} />
 
-        {/* Comments Section */}
-        <Box sx={{ mt: 4 }}>
-          <Accordion>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              aria-controls="comments-content"
-              id="comments-header"
+            {/* Post Content */}
+            <Box 
+              sx={{ 
+                '& img': {
+                  maxWidth: '400px',
+                  maxHeight: '300px',
+                  height: 'auto',
+                  objectFit: 'contain'
+                }
+              }}
             >
-              <Typography variant="h5">Comments ({commentCount})</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <CommentList postId={post.id} onCountChange={setCommentCount} />
-            </AccordionDetails>
-          </Accordion>
-        </Box>
+              <MDEditor.Markdown source={post.content} />
+            </Box>
 
-        {/* Refutations Section */}
-        <Box sx={{ mt: 4 }}>
-          <Accordion>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              aria-controls="refutations-content"
-              id="refutations-header"
-            >
-              <Typography variant="h5">Refutations ({refutationCount})</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <RefutationList postId={post.id} onCountChange={setRefutationCount} />
-            </AccordionDetails>
-          </Accordion>
-        </Box>
-      </Paper>
+            {/* Child Posts Section */}
+            {childPosts.length > 0 && (
+              <Box>
+                <Divider sx={{ my: 4 }} />
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Continued in:
+                  </Typography>
+                  <Stack spacing={2}>
+                    {childPosts.map((childPost) => (
+                      <Box 
+                        key={childPost.id}
+                        component={Link}
+                        to={`/${childPost.username}/post/${childPost.id}`}
+                        sx={{
+                          textDecoration: 'none',
+                          color: 'inherit',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          p: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          '&:hover': {
+                            backgroundColor: 'action.hover',
+                          }
+                        }}
+                      >
+                        <Typography variant="subtitle1">
+                          {childPost.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {format(new Date(childPost.created_at), 'MMMM d, yyyy')}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              </Box>
+            )}
+
+            <Divider sx={{ my: 4 }} />
+
+            {/* Comments Section */}
+            <Box sx={{ mt: 4 }}>
+              <Accordion>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  aria-controls="comments-content"
+                  id="comments-header"
+                >
+                  <Typography variant="h5">Comments ({commentCount})</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <CommentList postId={post.id} onCountChange={setCommentCount} />
+                </AccordionDetails>
+              </Accordion>
+            </Box>
+
+            {/* Refutations Section */}
+            <Box sx={{ mt: 4 }}>
+              <Accordion>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  aria-controls="refutations-content"
+                  id="refutations-header"
+                >
+                  <Typography variant="h5">Refutations ({refutationCount})</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <RefutationList postId={post.id} onCountChange={setRefutationCount} />
+                </AccordionDetails>
+              </Accordion>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
 
       <ConfirmModal
         open={showDeleteModal}
