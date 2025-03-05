@@ -27,11 +27,6 @@ import ChildPostsPanel from '../components/childposts/ChildPostsPanel'
 // Define development steps
 const DEVELOPMENT_STEPS = [
   { 
-    label: 'Child Posts', 
-    description: 'Manage child posts',
-    component: ChildPostsPanel 
-  },
-  { 
     label: 'Ideation', 
     description: 'Generate and refine ideas',
     component: IdeationPanel 
@@ -65,6 +60,11 @@ const DEVELOPMENT_STEPS = [
     label: 'Enhancement', 
     description: 'Enhance and optimize content',
     component: () => <Typography>Content Enhancement coming soon...</Typography>
+  },
+  { 
+    label: 'Child Posts', 
+    description: 'Add child posts to this post',
+    component: ChildPostsPanel 
   },
   { 
     label: 'Review', 
@@ -235,6 +235,9 @@ export default function PostWriter() {
           updated_at: new Date().toISOString()
         }
       }))
+
+      // Add a small delay before setting saving to false
+      await new Promise(resolve => setTimeout(resolve, 500))
     } catch (error) {
       console.error('Error saving post:', error)
       // Handle error silently
@@ -244,7 +247,7 @@ export default function PostWriter() {
   }
 
   const handleNext = async () => {
-    if (activeStep < DEVELOPMENT_STEPS.length - 1) {
+    if (activeStep < DEVELOPMENT_STEPS.length - 1 && !saving) {
       const nextStep = activeStep + 1
       setActiveStep(nextStep)
       await handleSave({ status: DEVELOPMENT_STEPS[nextStep].label.toLowerCase() })
@@ -252,7 +255,7 @@ export default function PostWriter() {
   }
 
   const handleBack = async () => {
-    if (activeStep > 0) {
+    if (activeStep > 0 && !saving) {
       const prevStep = activeStep - 1
       setActiveStep(prevStep)
       await handleSave({ status: DEVELOPMENT_STEPS[prevStep].label.toLowerCase() })
@@ -361,7 +364,7 @@ export default function PostWriter() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
         <Button
           onClick={handleBack}
-          disabled={activeStep === 0}
+          disabled={activeStep === 0 || saving}
           startIcon={<NavigateBeforeIcon />}
         >
           Back
@@ -372,7 +375,7 @@ export default function PostWriter() {
           disabled={activeStep === DEVELOPMENT_STEPS.length - 1 || saving}
           endIcon={<NavigateNextIcon />}
         >
-          {saving ? 'Saving...' : 'Next'}
+          {saving ? <CircularProgress size={24} /> : 'Next'}
         </Button>
       </Box>
     </Box>

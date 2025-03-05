@@ -47,45 +47,49 @@ function ManageInterests() {
     name: '',
     sequence: 0
   })
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [confirmDialog, setConfirmDialog] = useState({ open: false, interest: null, action: '' })
 
   useEffect(() => {
-    if (!user || user.email !== 'golfergeek@gmail.com') {
+    // Check if user is authenticated
+    if (user) {
+      setupStorage()
+      fetchInterests()
+    } else {
+      // Redirect to login if not authenticated
       navigate('/')
-      return
     }
-    
-    // Create interest-images bucket if it doesn't exist
-    const setupStorage = async () => {
-      try {
-        const { data: buckets } = await supabase.storage.listBuckets()
-        const bucketExists = buckets.some(bucket => bucket.name === 'interest-images')
-        
-        if (!bucketExists) {
-          const { error } = await supabase.storage.createBucket('interest-images', {
-            public: true,
-            allowedMimeTypes: ['image/*'],
-            fileSizeLimit: 5242880, // 5MB
-          })
-          
-          if (error) {
-            console.error('Error creating bucket:', error)
-          }
-        }
-      } catch (error) {
-        console.error('Error in setupStorage:', error)
-      }
-    }
+  }, [user])
 
-    setupStorage()
-    fetchInterests()
-  }, [user, navigate])
+  const setupStorage = async () => {
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets()
+      const bucketExists = buckets.some(bucket => bucket.name === 'interest-images')
+      
+      if (!bucketExists) {
+        const { error } = await supabase.storage.createBucket('interest-images', {
+          public: true,
+          allowedMimeTypes: ['image/*'],
+          fileSizeLimit: 5242880, // 5MB
+        })
+        
+        if (error) {
+          console.error('Error creating bucket:', error)
+        }
+      }
+    } catch (error) {
+      console.error('Error in setupStorage:', error)
+    }
+  }
 
   const fetchInterests = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true)
+      setError(null)
+
+      // Query interests that belong to the current user
+      let { data, error } = await supabase
         .from('interests')
         .select('*')
         .eq('user_id', user.id)
@@ -95,8 +99,11 @@ function ManageInterests() {
       if (error) throw error
       console.log('Fetched interests:', data)
       setInterests(data)
+      setLoading(false)
     } catch (error) {
       console.error('Error fetching interests:', error)
+      setError('Failed to fetch interests')
+      setLoading(false)
     }
   }
 
@@ -349,170 +356,191 @@ function ManageInterests() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Manage Interests
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddCircleOutlineOutlinedIcon />}
-          onClick={() => handleOpen()}
-        >
-          Add Interest
-        </Button>
-      </Box>
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Title</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell align="center">Status</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {interests.map((interest) => (
-              <TableRow key={interest.id}>
-                <TableCell>{interest.title}</TableCell>
-                <TableCell>{interest.description}</TableCell>
-                <TableCell align="center">
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Tooltip title={interest.is_active ? 'Active' : 'Inactive'}>
-                      <IconButton size="small" sx={{ mr: 1 }}>
-                        {interest.is_active ? 
-                          <VisibilityIcon color="primary" /> : 
-                          <VisibilityOffIcon color="action" />
-                        }
-                      </IconButton>
-                    </Tooltip>
-                    <Switch
-                      checked={interest.is_active}
-                      onChange={() => handleConfirmToggle(interest)}
-                      color="primary"
-                    />
-                  </Box>
-                </TableCell>
-                <TableCell align="center">
-                  <IconButton onClick={() => handleOpen(interest)}>
-                    <EditOutlinedIcon />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(interest.id)}>
-                    <DeleteOutlineOutlinedIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingInterest ? 'Edit Interest' : 'Add Interest'}
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField
-                name="title"
-                label="Title"
-                value={formData.title}
-                onChange={handleChange}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                name="name"
-                label="URL Name (optional)"
-                value={formData.name}
-                onChange={handleChange}
-                fullWidth
-                margin="normal"
-                helperText="Leave blank to auto-generate from title"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                name="description"
-                label="Description"
-                value={formData.description}
-                onChange={handleChange}
-                fullWidth
-                multiline
-                rows={3}
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
-                Interest Image
-              </Typography>
-              <ImageUpload 
-                onUpload={handleImageUpload}
-                onRemove={handleRemoveImage}
-                existingImages={formData.image_path ? [formData.image_path] : []}
-                bucket="interest-images"
-                folder="interest-images"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
-                Content
-              </Typography>
-              <MarkdownEditor
-                value={formData.content}
-                onChange={handleMarkdownChange('content')}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                name="sequence"
-                label="Sequence"
-                type="number"
-                value={formData.sequence}
-                onChange={handleChange}
-                fullWidth
-                margin="normal"
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
-            {editingInterest ? 'Save Changes' : 'Create Interest'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={confirmDialog.open}
-        onClose={() => setConfirmDialog({ ...confirmDialog, open: false })}
-      >
-        <DialogTitle>{confirmDialog.title}</DialogTitle>
-        <DialogContent>
-          <Typography>{confirmDialog.message}</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDialog({ ...confirmDialog, open: false })}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              handleToggleActive(confirmDialog.interest)
-              setConfirmDialog({ ...confirmDialog, open: false })
-            }}
-            color="primary"
-            variant="contained"
+      {!user ? (
+        <Paper elevation={3} sx={{ p: 4, textAlign: 'center', mt: 4 }}>
+          <Typography variant="h4" gutterBottom>
+            Authentication Required
+          </Typography>
+          <Typography variant="body1" paragraph>
+            You need to be logged in to manage your interests.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={() => navigate('/')}
+            sx={{ mt: 2 }}
           >
-            Confirm
+            Return to Home
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Paper>
+      ) : (
+        <>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+            <Typography variant="h4" component="h1">
+              Manage Interests
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddCircleOutlineOutlinedIcon />}
+              onClick={() => handleOpen()}
+            >
+              Add Interest
+            </Button>
+          </Box>
+
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Title</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell align="center">Status</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {interests.map((interest) => (
+                  <TableRow key={interest.id}>
+                    <TableCell>{interest.title}</TableCell>
+                    <TableCell>{interest.description}</TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Tooltip title={interest.is_active ? 'Active' : 'Inactive'}>
+                          <IconButton size="small" sx={{ mr: 1 }}>
+                            {interest.is_active ? 
+                              <VisibilityIcon color="primary" /> : 
+                              <VisibilityOffIcon color="action" />
+                            }
+                          </IconButton>
+                        </Tooltip>
+                        <Switch
+                          checked={interest.is_active}
+                          onChange={() => handleConfirmToggle(interest)}
+                          color="primary"
+                        />
+                      </Box>
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton onClick={() => handleOpen(interest)}>
+                        <EditOutlinedIcon />
+                      </IconButton>
+                      <IconButton onClick={() => handleDelete(interest.id)}>
+                        <DeleteOutlineOutlinedIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+            <DialogTitle>
+              {editingInterest ? 'Edit Interest' : 'Add Interest'}
+            </DialogTitle>
+            <DialogContent>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    name="title"
+                    label="Title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    name="name"
+                    label="URL Name (optional)"
+                    value={formData.name}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                    helperText="Leave blank to auto-generate from title"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    name="description"
+                    label="Description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    fullWidth
+                    multiline
+                    rows={3}
+                    margin="normal"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Interest Image
+                  </Typography>
+                  <ImageUpload 
+                    onUpload={handleImageUpload}
+                    onRemove={handleRemoveImage}
+                    existingImages={formData.image_path ? [formData.image_path] : []}
+                    bucket="interest-images"
+                    folder="interest-images"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Content
+                  </Typography>
+                  <MarkdownEditor
+                    value={formData.content}
+                    onChange={handleMarkdownChange('content')}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    name="sequence"
+                    label="Sequence"
+                    type="number"
+                    value={formData.sequence}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleClose}>Cancel</Button>
+              <Button onClick={handleSubmit} variant="contained" color="primary">
+                {editingInterest ? 'Save Changes' : 'Create Interest'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={confirmDialog.open}
+            onClose={() => setConfirmDialog({ ...confirmDialog, open: false })}
+          >
+            <DialogTitle>{confirmDialog.title}</DialogTitle>
+            <DialogContent>
+              <Typography>{confirmDialog.message}</Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setConfirmDialog({ ...confirmDialog, open: false })}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  handleToggleActive(confirmDialog.interest)
+                  setConfirmDialog({ ...confirmDialog, open: false })
+                }}
+                color="primary"
+                variant="contained"
+              >
+                Confirm
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
     </Container>
   )
 }

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { InterestProvider } from './contexts/InterestContext'
 import { ProfileProvider, useProfile } from './contexts/ProfileContext'
@@ -10,7 +10,7 @@ import Welcome from './components/Welcome'
 import DocumentHead from './components/DocumentHead'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import './styles/global.css'
-import { shouldShowWelcomePage, getRedirectPath, isValidPath, getEffectiveUsername } from './utils/urlUtils'
+import { shouldShowWelcomePage, getRedirectPath, isValidPath, getEffectiveUsername, getDomain, getPort } from './utils/urlUtils'
 import { supabase } from './lib/supabase'
 import { Box, CircularProgress } from '@mui/material'
 
@@ -32,11 +32,26 @@ const RouteGuard = ({ children }) => {
   const { user } = useAuth()
   const { blogProfile, setBlogProfile, loading: profileLoading } = useProfile()
   const location = useLocation()
+  const navigate = useNavigate()
   const [isProcessing, setIsProcessing] = useState(true)
   const [redirectTo, setRedirectTo] = useState(null)
 
   // Skip redirection for auth routes
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/signup'
+  
+  // Log route navigation to help with debugging
+  useEffect(() => {
+    // Check if we're on localhost:4021
+    const isLocalHierarchy = window.location.host === 'localhost:4021'
+    
+    console.log('RouteGuard navigation:', { 
+      pathname: location.pathname,
+      isLocalHierarchy,
+      user: user?.email,
+      blogProfile: blogProfile?.username,
+      params: location.pathname.split('/').filter(Boolean)
+    })
+  }, [location.pathname, user, blogProfile])
 
   useEffect(() => {
     const setupBlogProfile = async () => {
@@ -76,6 +91,7 @@ const RouteGuard = ({ children }) => {
     const checkRedirection = async () => {
       // Skip redirection for auth routes
       if (isAuthRoute) {
+        setIsProcessing(false)
         return
       }
 
@@ -86,46 +102,70 @@ const RouteGuard = ({ children }) => {
           redirectPath,
           blogProfile: blogProfile?.username
         })
-        setRedirectTo(redirectPath)
+        
+        // Only redirect if:
+        // 1. We have a redirect path
+        // 2. The redirect path is different from current path
+        // 3. We're not already in the process of redirecting
+        if (redirectPath && redirectPath !== location.pathname && !redirectTo) {
+          console.log(`Redirecting from ${location.pathname} to ${redirectPath}`)
+          setRedirectTo(redirectPath)
+        }
       }
     }
 
     checkRedirection()
-  }, [location.pathname, blogProfile, isProcessing, profileLoading, isAuthRoute])
+  }, [location.pathname, blogProfile, isProcessing, profileLoading, isAuthRoute, redirectTo])
 
-  // Show loading state while processing or waiting for profile
-  if ((isProcessing || profileLoading) && !isAuthRoute) {
-    console.log('RouteGuard loading:', { isProcessing, profileLoading })
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
-      }}>
-        <CircularProgress />
-      </Box>
-    )
-  }
+  // Handle navigation in useEffect, not during render
+  useEffect(() => {
+    // Only handle redirection if we have a redirect path and we're not on an auth route
+    if (redirectTo && !isAuthRoute) {
+      // Check for circular redirections
+      if (redirectTo === location.pathname) {
+        console.log('Prevented circular redirection to:', redirectTo)
+        // Clear redirectTo to prevent further attempts
+        setRedirectTo(null)
+      } else {
+        console.log('Navigating to:', redirectTo)
+        navigate(redirectTo, { replace: true })
+        // Clear redirectTo after navigation
+        setRedirectTo(null)
+      }
+    }
+    
+    // Handle protected route redirections
+    const isProtectedRoute = location.pathname.includes('/manage/') || 
+                            location.pathname.includes('/create') || 
+                            location.pathname.includes('/edit/') ||
+                            location.pathname.includes('/writer/')
+                          
+    if (isProtectedRoute && !user && !isAuthRoute && !redirectTo) {
+      console.log('Protected route access denied, redirecting to login')
+      // Pass the current location as state so we can redirect back after login
+      navigate('/login', { 
+        replace: true,
+        state: { from: location.pathname }
+      })
+    }
+  }, [redirectTo, isAuthRoute, location.pathname, user, navigate, location])
+// Show loading state while processing or waiting for profile
+if ((isProcessing || profileLoading) && !isAuthRoute) {
+  console.log('RouteGuard loading:', { isProcessing, profileLoading })
+  return (
+    <Box sx={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      height: '100vh' 
+    }}>
+      <CircularProgress />
+    </Box>
+  )
+}
 
-  // Handle redirection
-  if (redirectTo && !isAuthRoute) {
-    console.log('Redirecting to:', redirectTo)
-    return <Navigate to={redirectTo} replace />
-  }
-
-  // For protected routes, check user authentication
-  const isProtectedRoute = location.pathname.includes('/manage/') || 
-                          location.pathname.includes('/create') || 
-                          location.pathname.includes('/edit/') ||
-                          location.pathname.includes('/writer/')
-
-  if (isProtectedRoute && !user) {
-    console.log('Protected route access denied')
-    return <Navigate to="/login" replace />
-  }
-
-  return children
+// Return children without conditional navigation in render phase
+return children
 }
 
 function App() {
@@ -158,7 +198,6 @@ function App() {
                               } />
                               
                               {/* Direct routes (no username) */}
-                              <Route path="/home" element={<Home />} />
                               <Route path="/resume" element={<Resume />} />
                               <Route path="/post/:id" element={<ViewPost />} />
                               <Route path="/interest/:interest" element={<InterestPage />} />

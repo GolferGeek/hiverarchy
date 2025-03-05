@@ -2,17 +2,20 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const shouldGenerateSourcemap = env.VITE_DISABLE_SOURCEMAPS !== 'true'
-
+  
+  // Check if we're running in hierarchy-local mode (port 4021)
+  const isHierarchyLocal = process.env.HIERARCHY_LOCAL === 'true'
+  
   return {
     plugins: [react()],
     base: '/',
     assetsInclude: ['**/*.md'],
     server: {
-      port: 3000, // Default port
-      strictPort: false, // Allow fallback if port is in use
+      port: isHierarchyLocal ? 4021 : 3000, // Use port 4021 for hierarchy mode, 3000 as default
+      strictPort: true, // Don't fallback to another port
       fs: {
         // Allow serving files from the project root
         allow: ['..']

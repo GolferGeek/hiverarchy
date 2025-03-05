@@ -23,9 +23,10 @@ import ReactMarkdown from 'react-markdown'
 
 function InterestPage() {
   const navigate = useNavigate()
-  const { interest: interestName, username: routeUsername } = useParams()
+  const params = useParams()
+  const { interest: interestParam, username: routeUsername } = params
   const { user } = useAuth()
-  const { profile, currentUsername } = useProfile()
+  const { profile, currentUsername, blogProfile } = useProfile()
   const [interestData, setInterestData] = useState(null)
   const [posts, setPosts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -33,6 +34,23 @@ function InterestPage() {
   const [error, setError] = useState(null)
   const isOwner = user?.id === interestData?.user_id
   const { interests, loading: interestsLoading } = useInterests()
+  
+  // Determine the actual interest name, accounting for potential URL format differences
+  const interestName = interestParam || (params[0] === 'interest' && params[1]) || null
+  
+  // Log params to debug issues
+  useEffect(() => {
+    console.log('InterestPage params:', { 
+      rawParams: params,
+      interestName, 
+      interestParam,
+      routeUsername,
+      currentUsername,
+      blogProfileUsername: blogProfile?.username,
+      location: window.location.href,
+      isLocalhost4021: window.location.host === 'localhost:4021'
+    })
+  }, [params, interestName, interestParam, routeUsername, currentUsername, blogProfile])
 
   useEffect(() => {
     let isMounted = true
@@ -44,6 +62,7 @@ function InterestPage() {
         return
       }
 
+      console.log('Fetching interest data for:', interestName)
       setLoading(true)
       try {
         // Fetch both interest and posts in parallel
@@ -59,10 +78,17 @@ function InterestPage() {
             .contains('interest_names', [interestName])
         ])
 
-        if (interestResult.error) throw interestResult.error
-        if (postsResult.error) throw postsResult.error
+        if (interestResult.error) {
+          console.error('Error fetching interest:', interestResult.error)
+          throw interestResult.error
+        }
+        if (postsResult.error) {
+          console.error('Error fetching posts:', postsResult.error)
+          throw postsResult.error
+        }
 
         if (isMounted) {
+          console.log('Interest data fetched:', interestResult.data, 'Posts:', postsResult.data?.length || 0)
           setInterestData(interestResult.data)
           setPosts(postsResult.data || [])
           setError(null)

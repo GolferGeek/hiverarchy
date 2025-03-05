@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useProfile } from '../contexts/ProfileContext'
 import {
   Container,
   Box,
@@ -9,18 +10,22 @@ import {
   Typography,
   Paper,
   Link as MuiLink,
-  Alert
+  Alert,
+  CircularProgress,
+  Backdrop
 } from '@mui/material'
 
 function SignUp() {
   const navigate = useNavigate()
-  const { signUp } = useAuth()
+  const { signUp, signIn } = useAuth()
+  const { fetchProfiles } = useProfile()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [signingIn, setSigningIn] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -32,14 +37,31 @@ function SignUp() {
     try {
       setError('')
       setLoading(true)
+      
+      // Step 1: Sign up
+      const { data, error: signUpError } = await signUp({ email, password })
 
-      const { data, error } = await signUp({ email, password })
-
-      if (error) throw error
-
-      navigate('/login')
+      if (signUpError) throw signUpError
+      
+      // Show message to user
+      setMessage('Account created successfully! Signing you in...')
+      setSigningIn(true)
+      
+      // Step 2: Auto sign in after signup
+      const { error: signInError } = await signIn({ email, password })
+      
+      if (signInError) throw signInError
+      
+      // Step 3: Fetch profiles to ensure user data is loaded
+      await fetchProfiles()
+      
+      // Step 4: Redirect to profile setup page
+      navigate('/manage/profile')
+      
     } catch (error) {
+      console.error('Sign up error:', error)
       setError(error.message)
+      setSigningIn(false)
     } finally {
       setLoading(false)
     }
@@ -132,8 +154,19 @@ function SignUp() {
           </Box>
         </Paper>
       </Box>
+      
+      {/* Loading backdrop for sign-in process */}
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={signingIn}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <CircularProgress color="inherit" />
+          <Typography sx={{ mt: 2 }}>Signing you in...</Typography>
+        </Box>
+      </Backdrop>
     </Container>
   )
 }
 
-export default SignUp 
+export default SignUp

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
-import { shouldShowUsernameInUrl } from '../utils/urlUtils'
+import { shouldShowUsernameInUrl, getRedirectPath } from '../utils/urlUtils'
 import {
   Container,
   Box,
@@ -20,12 +20,15 @@ function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const { signIn } = useAuth()
-  const { fetchProfiles, userProfile } = useProfile()
+  const { fetchProfiles, userProfile, blogProfile } = useProfile()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [signingIn, setSigningIn] = useState(false)
+
+  // Extract redirect URL from state or search params (if any)
+  const from = location.state?.from || new URLSearchParams(location.search).get('from') || location.pathname
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -49,13 +52,27 @@ function Login() {
         attempts++
       }
 
-      // Navigate to the appropriate path based on domain
-      if (userProfile?.username) {
-        const basePath = shouldShowUsernameInUrl() ? `/${userProfile.username}` : ''
-        navigate(basePath || '/')
+      // Determine where to navigate after login
+      // If we came from a specific page (not login or root), go back there
+      if (from && from !== '/' && !from.includes('/login')) {
+        console.log('Returning to previous page after login:', from)
+        navigate(from)
       } else {
-        // For profile setup, don't include username in path
-        navigate('/manage/profile')
+        // Navigate to the appropriate path based on domain
+        if (userProfile?.username) {
+          // If we're on a specific blog profile page, stay there
+          if (blogProfile && blogProfile.username !== userProfile.username) {
+            console.log('Staying on current blog profile:', blogProfile.username)
+            // We're already on the correct URL, no need to navigate
+          } else {
+            // Otherwise go to the user's own profile
+            const basePath = shouldShowUsernameInUrl() ? `/${userProfile.username}` : ''
+            navigate(basePath || '/')
+          }
+        } else {
+          // For profile setup, don't include username in path
+          navigate('/manage/profile')
+        }
       }
 
     } catch (error) {
@@ -138,4 +155,4 @@ function Login() {
   )
 }
 
-export default Login 
+export default Login

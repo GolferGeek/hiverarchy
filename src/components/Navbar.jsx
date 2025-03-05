@@ -1,9 +1,9 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useInterests } from '../contexts/InterestContext'
 import { useProfile } from '../contexts/ProfileContext'
-import { AppBar, Toolbar, Button, IconButton, Box, Menu, MenuItem, Stack } from '@mui/material'
+import { AppBar, Toolbar, Button, IconButton, Box, Menu, MenuItem, Stack, Avatar } from '@mui/material'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SettingsIcon from '@mui/icons-material/Settings'
@@ -18,6 +18,7 @@ export default function Navbar() {
   const { blogProfile, userProfile, loading: profileLoading, currentUsername, getFullLogoUrl } = useProfile()
   const [manageAnchorEl, setManageAnchorEl] = useState(null)
   const location = useLocation()
+  const navigate = useNavigate()
 
   // Sort interests by sequence
   const sortedInterests = [...(interests || [])]
@@ -37,13 +38,19 @@ export default function Navbar() {
   // Check if we're on the welcome page
   const isWelcomePage = location.pathname === '/'
 
+  // Check if the user is viewing someone else's profile
+  const isViewingOtherProfile = user && 
+    blogProfile && 
+    userProfile && 
+    blogProfile.username !== userProfile.username
+
   // If we're loading and not on welcome page, don't show navbar
   if ((interestsLoading || profileLoading || !currentUsername) && !isWelcomePage) {
     return null
   }
 
   // Get the full logo URL - ensure we're getting it from the active profile
-  const logoUrl = isWelcomePage ? '/images/hiverarchy.jpeg' : getFullLogoUrl(activeProfile?.logo)
+  const logoUrl = isWelcomePage ? '/images/hiverarchy.jpeg' : getFullLogoUrl(blogProfile?.logo)
 
   return (
     <AppBar 
@@ -76,8 +83,7 @@ export default function Navbar() {
               gap: 1
             }}
           >
-            <Box
-              component="img"
+            <Avatar
               src={logoUrl}
               alt={isWelcomePage ? 'Hiverarchy logo' : `${blogProfile?.username}'s logo`}
               sx={{
@@ -86,20 +92,22 @@ export default function Navbar() {
                 objectFit: 'contain',
                 borderRadius: '4px'
               }}
-              onError={(e) => {
-                console.log('Logo load error, using default')
-                e.target.src = '/images/gg-logo.jpg'
+              imgProps={{
+                onError: (e) => {
+                  console.log('Logo load error, using default')
+                  e.target.src = '/images/gg-logo.jpg'
+                }
               }}
             />
             {isWelcomePage ? 'Hiverarchy' : (blogProfile?.username || 'Hiverarchy')}
           </Button>
           
           {/* Resume Link - Only show if resume exists and not on welcome page */}
-          {!isWelcomePage && activeProfile?.resume && (
+          {!isWelcomePage && blogProfile?.resume && (
             <Button
               color="inherit"
               component={Link}
-              to={shouldShowUsernameInUrl() ? `/${blogProfile?.username}/resume` : '/resume'}
+              to={`/${blogProfile?.username}/resume`}
               startIcon={<DescriptionIcon />}
               size="small"
               sx={{ 
@@ -148,46 +156,77 @@ export default function Navbar() {
 
           {user ? (
             <>
-              <IconButton
-                color="inherit"
-                onClick={handleManageClick}
-                aria-controls="manage-menu"
-                aria-haspopup="true"
-              >
-                <SettingsIcon />
-              </IconButton>
-              <Menu
-                id="manage-menu"
-                anchorEl={manageAnchorEl}
-                keepMounted
-                open={Boolean(manageAnchorEl)}
-                onClose={handleManageClose}
-              >
-                <MenuItem 
-                  component={Link} 
-                  to={`/${blogProfile?.username}/manage/posts`}
-                  onClick={handleManageClose}
+              {/* My Profile button - only when viewing someone else's profile */}
+              {isViewingOtherProfile && (
+                <Button 
+                  color="inherit"
+                  component={Link}
+                  to={`/${userProfile.username}`}
+                  sx={{ textTransform: 'none' }}
                 >
-                  Manage Posts
-                </MenuItem>
-                <MenuItem 
-                  component={Link} 
-                  to={`/${blogProfile?.username}/manage/profile`}
-                  onClick={handleManageClose}
+                  My Profile
+                </Button>
+              )}
+              
+              {/* Settings gear - only when viewing your own profile */}
+              {!isViewingOtherProfile && (
+                <>
+                  <IconButton
+                    color="inherit"
+                    onClick={handleManageClick}
+                    aria-controls="manage-menu"
+                    aria-haspopup="true"
+                  >
+                    <SettingsIcon />
+                  </IconButton>
+                  <Menu
+                    id="manage-menu"
+                    anchorEl={manageAnchorEl}
+                    keepMounted
+                    open={Boolean(manageAnchorEl)}
+                    onClose={handleManageClose}
+                  >
+                    <MenuItem 
+                      component={Link} 
+                      to={`/${blogProfile?.username}/manage/posts`}
+                      onClick={handleManageClose}
+                    >
+                      Manage Posts
+                    </MenuItem>
+                    <MenuItem 
+                      component={Link} 
+                      to={`/${blogProfile?.username}/manage/interests`}
+                      onClick={handleManageClose}
+                    >
+                      Manage Interests
+                    </MenuItem>
+                    <MenuItem 
+                      component={Link} 
+                      to={`/${blogProfile?.username}/manage/profile`}
+                      onClick={handleManageClose}
+                    >
+                      Manage Profile
+                    </MenuItem>
+                    <MenuItem onClick={() => {
+                      handleManageClose()
+                      signOut()
+                    }}>
+                      Logout
+                    </MenuItem>
+                  </Menu>
+                </>
+              )}
+              
+              {/* Always show logout option even when viewing someone else's profile */}
+              {isViewingOtherProfile && (
+                <Button 
+                  color="inherit"
+                  onClick={signOut}
+                  sx={{ textTransform: 'none' }}
                 >
-                  Manage Profile
-                </MenuItem>
-                <MenuItem 
-                  component={Link} 
-                  to={`/${blogProfile?.username}/manage/interests`}
-                  onClick={handleManageClose}
-                >
-                  Manage Interests
-                </MenuItem>
-              </Menu>
-              <Button color="inherit" onClick={signOut}>
-                Sign Out
-              </Button>
+                  Logout
+                </Button>
+              )}
             </>
           ) : (
             <Button color="inherit" component={Link} to="/login">

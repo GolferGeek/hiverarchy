@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Box, Container, Typography, Button, Paper, Grid } from '@mui/material'
+import { Box, Container, Typography, Button, Paper, Grid, Avatar, Divider } from '@mui/material'
 import { useTheme } from '../contexts/ThemeContext'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,7 +9,7 @@ import { useProfile } from '../contexts/ProfileContext'
 export default function Welcome() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { userProfile } = useProfile()
+  const { userProfile, getFullLogoUrl } = useProfile()
   const { darkMode } = useTheme()
 
   return (
@@ -31,6 +31,48 @@ export default function Welcome() {
               <Typography variant="h5" color="text.secondary" paragraph>
                 A collaborative platform where developers share and evolve knowledge together
               </Typography>
+              
+              {/* Personalized Welcome for Logged-In Users */}
+              {user && userProfile && (
+                <Paper 
+                  elevation={3}
+                  sx={{ 
+                    p: 3, 
+                    mt: 4, 
+                    mx: 'auto',
+                    maxWidth: 500,
+                    backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.08)' : 'background.paper',
+                    borderRadius: 2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Avatar 
+                    src={getFullLogoUrl(userProfile?.logo)}
+                    alt={`${userProfile?.username || 'User'}'s profile`}
+                    sx={{ 
+                      width: 80, 
+                      height: 80,
+                      mb: 2,
+                      border: '2px solid',
+                      borderColor: 'primary.main'
+                    }}
+                  />
+                  <Typography variant="h6" gutterBottom>
+                    Welcome back, {userProfile?.username || 'Developer'}!
+                  </Typography>
+                  <Button 
+                    component={Link}
+                    to={`/${userProfile?.username}`}
+                    variant="contained" 
+                    color="primary"
+                    sx={{ mt: 1, borderRadius: 0 }}
+                  >
+                    Go to Your Blog
+                  </Button>
+                </Paper>
+              )}
             </Box>
           </Grid>
 
@@ -127,4 +169,4 @@ export default function Welcome() {
       </Box>
     </Container>
   )
-} 
+}

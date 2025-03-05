@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Typography,
@@ -16,12 +15,11 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { supabase } from '../lib/supabase'
 
-export default function PostTree({ arcId }) {
+export default function PostTree({ arcId, currentPostId, onPostSelect, isArcMode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [postHierarchy, setPostHierarchy] = useState(null)
   const [expanded, setExpanded] = useState(new Set())
-  const navigate = useNavigate()
 
   useEffect(() => {
     if (arcId) {
@@ -42,8 +40,6 @@ export default function PostTree({ arcId }) {
         .order('created_at', { ascending: true })
 
       if (postsError) throw postsError
-
-      console.log('PostTree: Raw posts data:', posts)
 
       if (!posts || posts.length === 0) {
         setError('No posts found')
@@ -104,11 +100,18 @@ export default function PostTree({ arcId }) {
     })
   }
 
+  const handlePostClick = (nodeId) => {
+    if (onPostSelect) {
+      onPostSelect(nodeId)
+    }
+  }
+
   const renderNode = (node, level = 0) => {
     if (!node?.id || !node?.title) return null
 
     const hasChildren = Array.isArray(node.children) && node.children.length > 0
     const isNodeExpanded = expanded.has(node.id)
+    const isCurrentPost = node.id === currentPostId
 
     return (
       <Box key={node.id}>
@@ -116,10 +119,12 @@ export default function PostTree({ arcId }) {
           sx={{ 
             pl: level * 2,
             cursor: 'pointer',
+            bgcolor: isCurrentPost ? 'action.selected' : 'transparent',
             '&:hover': {
-              bgcolor: 'action.hover'
+              bgcolor: isCurrentPost ? 'action.selected' : 'action.hover'
             }
           }}
+          onClick={() => handlePostClick(node.id)}
         >
           {hasChildren && (
             <ListItemIcon sx={{ minWidth: 32 }}>
@@ -136,11 +141,11 @@ export default function PostTree({ arcId }) {
           )}
           <ListItemText 
             primary={node.title}
-            onClick={() => navigate(`/post/${node.id}`)}
             sx={{ 
               ml: hasChildren ? 0 : 4,
               '& .MuiTypography-root': {
-                fontWeight: level === 0 ? 500 : 400
+                fontWeight: isCurrentPost ? 500 : 400,
+                color: isCurrentPost ? 'primary.main' : 'text.primary'
               }
             }}
           />
@@ -158,45 +163,169 @@ export default function PostTree({ arcId }) {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-        <CircularProgress size={24} />
+      <Box
+        sx={{
+          width: '375px',
+          height: '100%',
+          position: 'relative'
+        }}
+      >
+        <Paper 
+          sx={{ 
+            p: 2,
+            position: 'sticky',
+            top: 93,
+            maxHeight: 'calc(100vh - 100px)',
+            width: '100%',
+            bgcolor: 'background.paper',
+            borderRadius: 1,
+            boxShadow: 1,
+            overflowY: 'scroll',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+              backgroundColor: 'transparent'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              borderRadius: '4px'
+            },
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(0, 0, 0, 0.1) transparent',
+            transition: 'none'
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+            <CircularProgress size={24} />
+          </Box>
+        </Paper>
       </Box>
     )
   }
 
   if (error) {
     return (
-      <Typography color="error" sx={{ p: 2 }}>
-        {error}
-      </Typography>
+      <Box
+        sx={{
+          width: '375px',
+          height: '100%',
+          position: 'relative'
+        }}
+      >
+        <Paper 
+          sx={{ 
+            p: 2,
+            position: 'sticky',
+            top: 93,
+            maxHeight: 'calc(100vh - 100px)',
+            width: '100%',
+            bgcolor: 'background.paper',
+            borderRadius: 1,
+            boxShadow: 1,
+            overflowY: 'scroll',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+              backgroundColor: 'transparent'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              borderRadius: '4px'
+            },
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(0, 0, 0, 0.1) transparent',
+            transition: 'none'
+          }}
+        >
+          <Typography color="error" sx={{ p: 2 }}>
+            {error}
+          </Typography>
+        </Paper>
+      </Box>
     )
   }
 
   if (!postHierarchy) {
     return (
-      <Typography color="text.secondary" sx={{ p: 2 }}>
-        No posts found
-      </Typography>
+      <Box
+        sx={{
+          width: '375px',
+          height: '100%',
+          position: 'relative'
+        }}
+      >
+        <Paper 
+          sx={{ 
+            p: 2,
+            position: 'sticky',
+            top: 93,
+            maxHeight: 'calc(100vh - 100px)',
+            width: '100%',
+            bgcolor: 'background.paper',
+            borderRadius: 1,
+            boxShadow: 1,
+            overflowY: 'scroll',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+              backgroundColor: 'transparent'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              borderRadius: '4px'
+            },
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(0, 0, 0, 0.1) transparent',
+            transition: 'none'
+          }}
+        >
+          <Typography color="text.secondary" sx={{ p: 2 }}>
+            No posts found
+          </Typography>
+        </Paper>
+      </Box>
     )
   }
 
   return (
-    <Paper 
-      sx={{ 
-        p: 2,
-        position: 'sticky',
-        top: 93,
-        maxHeight: 'calc(100vh - 100px)',
-        minWidth: '375px',
-        bgcolor: 'background.paper',
-        borderRadius: 1,
-        boxShadow: 1,
-        overflowY: 'auto'
+    <Box
+      sx={{
+        width: '375px',
+        height: '100%',
+        position: 'relative'
       }}
     >
-      <List disablePadding>
-        {renderNode(postHierarchy)}
-      </List>
-    </Paper>
+      <Paper 
+        sx={{ 
+          p: 2,
+          position: 'sticky',
+          top: 93,
+          maxHeight: 'calc(100vh - 100px)',
+          width: '100%',
+          bgcolor: 'background.paper',
+          borderRadius: 1,
+          boxShadow: 1,
+          overflowY: 'scroll',
+          '&::-webkit-scrollbar': {
+            width: '8px',
+            backgroundColor: 'transparent'
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            borderRadius: '4px'
+          },
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(0, 0, 0, 0.1) transparent',
+          transition: 'none'
+        }}
+      >
+        <List 
+          disablePadding
+          sx={{ 
+            transition: 'none',
+            '& *': { transition: 'none !important' }
+          }}
+        >
+          {renderNode(postHierarchy)}
+        </List>
+      </Paper>
+    </Box>
   )
 } 
