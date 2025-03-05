@@ -7,8 +7,19 @@ export const getDomain = () => {
   return window.location.hostname
 }
 
+export const getPort = () => {
+  return window.location.port
+}
+
 export const isHiverarchyDomain = () => {
   const domain = getDomain()
+  const port = getPort()
+  
+  // Consider localhost:4021 as hierarchy.com (for development)
+  if (domain === 'localhost' && port === '4021') {
+    return true
+  }
+  
   return domain.includes('hiverarchy.com')
 }
 
@@ -19,7 +30,11 @@ export const isUserDomain = () => {
 
 export const isLocalhost = () => {
   const domain = getDomain()
-  return domain === 'localhost'
+  const port = getPort()
+  
+  // Only consider localhost without port 4021 as regular localhost
+  // localhost:4021 is treated as hierarchy.com
+  return domain === 'localhost' && port !== '4021'
 }
 
 export const shouldShowUsernameInUrl = () => {

@@ -11,6 +11,8 @@ export default defineConfig(({ mode }) => {
     base: '/',
     assetsInclude: ['**/*.md'],
     server: {
+      port: 3000, // Default port
+      strictPort: false, // Allow fallback if port is in use
       fs: {
         // Allow serving files from the project root
         allow: ['..']
