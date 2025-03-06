@@ -5,6 +5,7 @@ import ImageUpload from '../components/ImageUpload'
 import MarkdownEditor from '../components/MarkdownEditor'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
+import { shouldShowUsernameInUrl } from '../utils/urlUtils'
 import {
   Container,
   Paper,
@@ -330,7 +331,7 @@ function CreatePost() {
               <Grid item xs={12}>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Creating child post for: <Link to={`/post/${state.parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
+                    Creating child post for: <Link to={shouldShowUsernameInUrl() ? `/${currentUsername}/post/${state.parentPost.id}` : `/post/${state.parentPost.id}`} style={{ color: 'inherit', textDecoration: 'underline' }}>
                       {state.parentPost.title}
                     </Link>
                   </Typography>

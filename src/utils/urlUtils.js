@@ -263,6 +263,16 @@ export const getRedirectPath = async (currentPath, blogProfile = null) => {
         return redirectPath;
       }
       
+      // Special case for post pages:
+      // Convert /post/postId to /username/post/postId
+      if (parts[0] === 'post' && parts.length > 1) {
+        const redirectPath = `/${username}/post/${parts[1]}`;
+        if (redirectPath === cleanPath) {
+          return null; // Already on the correct path
+        }
+        return redirectPath;
+      }
+      
       // Special case for manage pages:
       // Convert /manage/x to /username/manage/x
       if (parts[0] === 'manage' && parts.length > 1) {

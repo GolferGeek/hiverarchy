@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import ConfirmModal from './ConfirmModal'
 import { Paper, Typography, Button, Box, Chip, Stack, Alert } from '@mui/material'
 import { useProfile } from '../contexts/ProfileContext'
+import { shouldShowUsernameInUrl } from '../utils/urlUtils'
 
 export default function PostCard({ post, onDelete, showInterest = true }) {
   const { user } = useAuth()
@@ -199,7 +200,7 @@ export default function PostCard({ post, onDelete, showInterest = true }) {
             >
               <Button
                 component={Link}
-                to={`/post/${post.id}`}
+                to={shouldShowUsernameInUrl() ? `/${currentUsername}/post/${post.id}` : `/post/${post.id}`}
                 variant="contained"
                 color="primary"
                 size="small"
