@@ -69,21 +69,6 @@ const RouteGuard = ({ children }) => {
     // Check if we're on localhost:4021
     const isLocalHierarchy = window.location.host === 'localhost:4021'
     
-    // Check for malformed URL with repeated patterns
-    const currentUrl = window.location.href
-    if (currentUrl.includes('~and~')) {
-      console.warn('Detected potentially malformed URL:', currentUrl)
-      
-      // Clean URL by removing query parameters and hash
-      const cleanUrl = window.location.origin + 
-                      window.location.pathname.split(/[?#]/)[0]
-      
-      console.log('Redirecting to clean URL:', cleanUrl)
-      // Use history API instead of React Router to avoid potential issues
-      window.history.replaceState(null, '', cleanUrl)
-      return
-    }
-    
     console.log('RouteGuard navigation:', { 
       pathname: location.pathname,
       isLocalHierarchy,
