@@ -144,40 +144,50 @@ export const isValidPath = (path) => {
 }
 
 export const getRedirectPath = async (currentPath, blogProfile = null) => {
-  const parts = currentPath.split('/').filter(Boolean)
-  const username = await getEffectiveUsername(blogProfile)
+  // Sanitize the input path to remove any query parameters or hash fragments
+  // that might cause issues with URL manipulation
+  let cleanPath = currentPath;
+  if (currentPath.includes('?') || currentPath.includes('#')) {
+    cleanPath = currentPath.split(/[?#]/)[0];
+    console.log('Sanitized path:', { original: currentPath, cleaned: cleanPath });
+  }
+  
+  // Split the path into its components and filter out empty segments
+  const parts = cleanPath.split('/').filter(Boolean);
+  const username = await getEffectiveUsername(blogProfile);
   
   console.log('getRedirectPath:', {
-    currentPath,
+    originalPath: currentPath,
+    cleanPath,
     parts,
     username,
     isHiverarchyDomain: isHiverarchyDomain(),
     domain: getDomain(),
     port: getPort()
-  })
+  });
   
   // Early return if we don't have a username but username is required in path
   if (!username && shouldShowUsernameInUrl()) {
-    console.log('Early return: Username required but not available')
-    return null
+    console.log('Early return: Username required but not available');
+    return null;
   }
   
   // Never redirect to the same path
-  const currentPathClean = '/' + parts.join('/')
+  const currentPathClean = '/' + parts.join('/');
   
   // For user domains (e.g., golfergeek.com)
   if (isUserDomain()) {
     // On user domains, username should not be in URL
     if (parts.length === 0) {
-      return '/'
+      return '/';
     }
     
     // If first part is a username, remove it
     if (parts[0] === username) {
-      return '/' + parts.slice(1).join('/')
+      return '/' + parts.slice(1).join('/');
     }
     
-    return null
+    return null;
   }
 
   // For hiverarchy domain or localhost:4021
@@ -186,23 +196,31 @@ export const getRedirectPath = async (currentPath, blogProfile = null) => {
     if (parts.length === 0) {
       // For localhost:4021, redirect to /:username if at root
       if (getDomain() === 'localhost' && getPort() === '4021' && username) {
-        return `/${username}`
+        return `/${username}`;
       }
-      return null
+      return null;
     }
     
     // CRITICAL CHECK: If the first part is a valid username (any user's profile),
     // allow viewing that profile without redirection
     if (parts.length > 0) {
       try {
+        // IMPORTANT: When the first part of the URL is a username different from the logged-in user,
+        // we SHOULD NOT redirect as this would prevent cross-profile navigation
         const { data: profileData } = await supabase
           .from('profiles')
           .select('username')
           .eq('username', parts[0])
-          .single()
+          .single();
         
         if (profileData) {
-          console.log(`Found valid username ${parts[0]} in URL, no redirection needed`)
+          console.log(`Found valid username ${parts[0]} in URL, no redirection needed`);
+          
+          // If we're viewing another user's profile, never redirect
+          if (username && parts[0] !== username) {
+            console.log(`Allowing cross-profile navigation to ${parts[0]}`);
+            return null;
+          }
           
           // If we're on a username path with additional segments, check if those are valid
           if (parts.length > 1) {
@@ -224,7 +242,7 @@ export const getRedirectPath = async (currentPath, blogProfile = null) => {
         }
       } catch (error) {
         // Error means the first part is not a valid username
-        console.log('First URL part is not a valid username:', parts[0])
+        console.log('First URL part is not a valid username:', parts[0]);
       }
     }
     
@@ -239,7 +257,7 @@ export const getRedirectPath = async (currentPath, blogProfile = null) => {
       // Convert /interest/interestName to /username/interest/interestName
       if (parts[0] === 'interest' && parts.length > 1) {
         const redirectPath = `/${username}/interest/${parts[1]}`;
-        if (redirectPath === currentPath) {
+        if (redirectPath === cleanPath) {
           return null; // Already on the correct path
         }
         return redirectPath;
@@ -249,7 +267,7 @@ export const getRedirectPath = async (currentPath, blogProfile = null) => {
       // Convert /manage/x to /username/manage/x
       if (parts[0] === 'manage' && parts.length > 1) {
         const redirectPath = `/${username}/manage/${parts.slice(1).join('/')}`;
-        if (redirectPath === currentPath) {
+        if (redirectPath === cleanPath) {
           return null; // Already on the correct path
         }
         return redirectPath;
@@ -258,7 +276,7 @@ export const getRedirectPath = async (currentPath, blogProfile = null) => {
       // For all other routes, if username is not the first part, add it
       if (parts[0] !== username) {
         const redirectPath = `/${username}/${parts.join('/')}`;
-        if (redirectPath === currentPath) {
+        if (redirectPath === cleanPath) {
           return null; // Already on the correct path
         }
         return redirectPath;
@@ -266,7 +284,7 @@ export const getRedirectPath = async (currentPath, blogProfile = null) => {
     }
   }
   
-  return null
+  return null;
 }
 
 export const removeUsernameFromPath = async (path) => {

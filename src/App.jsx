@@ -14,6 +14,11 @@ import { shouldShowWelcomePage, getRedirectPath, isValidPath, getEffectiveUserna
 import { supabase } from './lib/supabase'
 import { Box, CircularProgress } from '@mui/material'
 
+// Ensure DOM is ready before accessing document.body
+const isDOMReady = () => {
+  return document && document.body
+}
+
 const Home = lazy(() => import('./pages/Home'))
 const Login = lazy(() => import('./pages/Login'))
 const SignUp = lazy(() => import('./pages/SignUp'))
@@ -35,14 +40,49 @@ const RouteGuard = ({ children }) => {
   const navigate = useNavigate()
   const [isProcessing, setIsProcessing] = useState(true)
   const [redirectTo, setRedirectTo] = useState(null)
+  const [domReady, setDomReady] = useState(false)
 
   // Skip redirection for auth routes
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/signup'
   
+  // Ensure DOM is ready before proceeding with any DOM operations
+  useEffect(() => {
+    if (isDOMReady()) {
+      setDomReady(true)
+    } else {
+      // If DOM is not ready, wait for it
+      const checkDom = setInterval(() => {
+        if (isDOMReady()) {
+          setDomReady(true)
+          clearInterval(checkDom)
+        }
+      }, 50)
+      return () => clearInterval(checkDom)
+    }
+  }, [])
+  
   // Log route navigation to help with debugging
   useEffect(() => {
+    // Skip if DOM is not ready
+    if (!domReady) return
+    
     // Check if we're on localhost:4021
     const isLocalHierarchy = window.location.host === 'localhost:4021'
+    
+    // Check for malformed URL with repeated patterns
+    const currentUrl = window.location.href
+    if (currentUrl.includes('~and~')) {
+      console.warn('Detected potentially malformed URL:', currentUrl)
+      
+      // Clean URL by removing query parameters and hash
+      const cleanUrl = window.location.origin + 
+                      window.location.pathname.split(/[?#]/)[0]
+      
+      console.log('Redirecting to clean URL:', cleanUrl)
+      // Use history API instead of React Router to avoid potential issues
+      window.history.replaceState(null, '', cleanUrl)
+      return
+    }
     
     console.log('RouteGuard navigation:', { 
       pathname: location.pathname,
@@ -51,7 +91,7 @@ const RouteGuard = ({ children }) => {
       blogProfile: blogProfile?.username,
       params: location.pathname.split('/').filter(Boolean)
     })
-  }, [location.pathname, user, blogProfile])
+  }, [location.pathname, user, blogProfile, domReady])
 
   useEffect(() => {
     const setupBlogProfile = async () => {
@@ -88,17 +128,32 @@ const RouteGuard = ({ children }) => {
 
   // Check redirection in a separate effect
   useEffect(() => {
+    // Skip if DOM is not ready
+    if (!domReady) return
+    
     const checkRedirection = async () => {
       // Skip redirection for auth routes
       if (isAuthRoute) {
         setIsProcessing(false)
         return
       }
+      
+      // Skip redirection if URL has query parameters or hash fragments
+      // This prevents issues with malformed URLs getting worse through redirects
+      if (location.search || location.hash) {
+        console.log('Skipping redirection due to query parameters or hash in URL')
+        setIsProcessing(false)
+        return
+      }
 
       if (!isProcessing && !profileLoading) {
-        const redirectPath = await getRedirectPath(location.pathname, blogProfile)
+        // Get clean path for redirection check
+        const cleanPath = location.pathname.split(/[?#]/)[0]
+        
+        const redirectPath = await getRedirectPath(cleanPath, blogProfile)
         console.log('Checking redirection:', { 
           currentPath: location.pathname, 
+          cleanPath,
           redirectPath,
           blogProfile: blogProfile?.username
         })
@@ -107,30 +162,55 @@ const RouteGuard = ({ children }) => {
         // 1. We have a redirect path
         // 2. The redirect path is different from current path
         // 3. We're not already in the process of redirecting
-        if (redirectPath && redirectPath !== location.pathname && !redirectTo) {
-          console.log(`Redirecting from ${location.pathname} to ${redirectPath}`)
+        // 4. The redirect doesn't contain the current path (prevents loops)
+        const isValidRedirect = redirectPath && 
+                               redirectPath !== cleanPath && 
+                               !redirectTo && 
+                               !cleanPath.includes(redirectPath) && 
+                               !redirectPath.includes(cleanPath)
+        
+        if (isValidRedirect) {
+          console.log(`Redirecting from ${cleanPath} to ${redirectPath}`)
           setRedirectTo(redirectPath)
+        } else if (redirectPath) {
+          console.log(`Skipping potential redirect loop: ${cleanPath} → ${redirectPath}`)
+          setIsProcessing(false)
         }
       }
     }
 
     checkRedirection()
-  }, [location.pathname, blogProfile, isProcessing, profileLoading, isAuthRoute, redirectTo])
+  }, [location.pathname, location.search, location.hash, blogProfile, isProcessing, profileLoading, isAuthRoute, redirectTo, domReady])
 
   // Handle navigation in useEffect, not during render
   useEffect(() => {
+    // Skip if DOM is not ready
+    if (!domReady) return
+    
     // Only handle redirection if we have a redirect path and we're not on an auth route
     if (redirectTo && !isAuthRoute) {
-      // Check for circular redirections
-      if (redirectTo === location.pathname) {
+      // Check for circular redirections or if paths are too similar
+      if (redirectTo === location.pathname || 
+          location.pathname.includes(redirectTo) || 
+          redirectTo.includes(location.pathname)) {
         console.log('Prevented circular redirection to:', redirectTo)
         // Clear redirectTo to prevent further attempts
         setRedirectTo(null)
+        setIsProcessing(false)
       } else {
-        console.log('Navigating to:', redirectTo)
-        navigate(redirectTo, { replace: true })
+        // Additional safety: ensure there are no query parameters or hash fragments
+        // that could cause issues
+        const cleanRedirect = redirectTo.split(/[?#]/)[0]
+        
+        console.log('Navigating to:', cleanRedirect)
+        // Use history API for critical navigation to avoid React Router edge cases
+        window.history.replaceState(null, '', cleanRedirect)
+        // Also update React Router's state for component awareness
+        navigate(cleanRedirect, { replace: true })
         // Clear redirectTo after navigation
         setRedirectTo(null)
+        // Brief timeout to let navigation complete before processing again
+        setTimeout(() => setIsProcessing(false), 50)
       }
     }
     
@@ -145,13 +225,13 @@ const RouteGuard = ({ children }) => {
       // Pass the current location as state so we can redirect back after login
       navigate('/login', { 
         replace: true,
-        state: { from: location.pathname }
+        state: { from: location.pathname.split(/[?#]/)[0] } // Use clean path
       })
     }
   }, [redirectTo, isAuthRoute, location.pathname, user, navigate, location])
-// Show loading state while processing or waiting for profile
-if ((isProcessing || profileLoading) && !isAuthRoute) {
-  console.log('RouteGuard loading:', { isProcessing, profileLoading })
+// Show loading state while processing or waiting for profile or DOM
+if ((isProcessing || profileLoading || !domReady) && !isAuthRoute) {
+  console.log('RouteGuard loading:', { isProcessing, profileLoading, domReady })
   return (
     <Box sx={{ 
       display: 'flex', 
