@@ -1,0 +1,13 @@
+[build]
+  # Directory to publish (build output directory)
+  publish = "dist"
+  # Default build command 
+  command = "npm run build"
+
+# The following redirect is adapted from https://www.netlify.com/docs/redirects/
+# It enables pushState routing for SPAs
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true

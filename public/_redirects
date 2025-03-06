@@ -1,0 +1,6 @@
+# Netlify redirects file
+# Handle SPA routing - redirect all paths to index.html with 200 status code
+/*    /index.html   200
+
+# Optional: Redirect from www to non-www (uncomment if needed)
+# https://www.hiverarchy.com/* https://hiverarchy.com/:splat 301!
