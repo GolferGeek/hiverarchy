@@ -31,6 +31,8 @@ const UserProfile = lazy(() => import('./pages/UserProfile'))
 const Posts = lazy(() => import('./pages/Posts'))
 const Resume = lazy(() => import('./pages/Resume'))
 const PostWriter = lazy(() => import('./pages/PostWriter'))
+const Now = lazy(() => import('./pages/Now'))
+const EditNow = lazy(() => import('./pages/EditNow'))
 
 // Route guard component to check for username
 const RouteGuard = ({ children }) => {
@@ -301,6 +303,12 @@ function App() {
                               <Route path="/:username">
                                 <Route index element={<Home />} />
                                 <Route path="resume" element={<Resume />} />
+                                <Route path="now" element={<Now />} />
+                                <Route path="now/edit" element={
+                                  <ProtectedRoute>
+                                    <EditNow />
+                                  </ProtectedRoute>
+                                } />
                                 <Route path="post/:id" element={<ViewPost />} />
                                 <Route path="interest/:interest" element={<InterestPage />} />
                                 <Route path="create" element={

@@ -8,6 +8,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SettingsIcon from '@mui/icons-material/Settings'
 import DescriptionIcon from '@mui/icons-material/Description'
+import UpdateIcon from '@mui/icons-material/Update'
 import { useState } from 'react'
 import { shouldShowUsernameInUrl } from '../utils/urlUtils'
 
@@ -102,22 +103,41 @@ export default function Navbar() {
             {isWelcomePage ? 'Hiverarchy' : (blogProfile?.username || 'Hiverarchy')}
           </Button>
           
-          {/* Resume Link - Only show if resume exists and not on welcome page */}
-          {!isWelcomePage && blogProfile?.resume && (
-            <Button
-              color="inherit"
-              component={Link}
-              to={`/${blogProfile?.username}/resume`}
-              startIcon={<DescriptionIcon />}
-              size="small"
-              sx={{ 
-                textTransform: 'none',
-                whiteSpace: 'nowrap',
-                ml: 1
-              }}
-            >
-              Resume
-            </Button>
+          {/* Resume and Now Links - Only show if not on welcome page */}
+          {!isWelcomePage && (
+            <Stack direction="row" spacing={1}>
+              {blogProfile?.resume && (
+                <Button
+                  color="inherit"
+                  component={Link}
+                  to={`/${blogProfile?.username}/resume`}
+                  startIcon={<DescriptionIcon />}
+                  size="small"
+                  sx={{ 
+                    textTransform: 'none',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Resume
+                </Button>
+              )}
+              {/* Show Now link if it's your own profile OR if the blog profile has Now content */}
+              {(!isViewingOtherProfile || blogProfile?.now) && (
+                <Button
+                  color="inherit"
+                  component={Link}
+                  to={`/${blogProfile?.username}/now`}
+                  startIcon={<UpdateIcon />}
+                  size="small"
+                  sx={{ 
+                    textTransform: 'none',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Now
+                </Button>
+              )}
+            </Stack>
           )}
         </Stack>
 
