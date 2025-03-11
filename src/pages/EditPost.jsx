@@ -17,7 +17,8 @@ export default function EditPost() {
     brief_description: '',
     content: '',
     tag_names: [],
-    interest_names: []
+    interest_names: [],
+    completeness: 3
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -118,6 +119,7 @@ export default function EditPost() {
           tag_ids: post.tag_ids,
           interest_names: post.interest_names,
           interest_ids: post.interest_ids,
+          completeness: post.completeness,
           updated_at: new Date().toISOString(),
           post_writer: {
             ...post.post_writer,
@@ -333,6 +335,26 @@ export default function EditPost() {
                 value={post.brief_description}
                 onChange={(e) => setPost(prev => ({ ...prev, brief_description: e.target.value }))}
                 sx={{ mb: 2 }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                type="number"
+                required
+                label="Completeness"
+                value={post.completeness || 3}
+                onChange={(e) => {
+                  const value = Math.min(Math.max(parseInt(e.target.value) || 0, 0), 10)
+                  setPost(prev => ({ ...prev, completeness: value }))
+                }}
+                inputProps={{
+                  min: 0,
+                  max: 10,
+                  step: 1
+                }}
+                helperText="Rate the completeness of this post from 0 to 10"
+                sx={{ width: 200 }}
               />
             </Grid>
 
