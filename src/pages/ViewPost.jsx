@@ -25,7 +25,6 @@ import {
   AccordionDetails
 } from '@mui/material'
 import { Edit as EditIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material'
-import WriterButton from '../components/WriterButton'
 import RefutationList from '../components/RefutationList'
 
 function ViewPost() {
@@ -397,7 +396,6 @@ function ViewPost() {
                     >
                       Delete
                     </Button>
-                    <WriterButton postId={post.id} />
                   </>
                 )}
               </Box>
