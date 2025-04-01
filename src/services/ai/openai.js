@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 
 export class OpenAIService {
   constructor(apiKey) {
+    console.log('Initializing OpenAI service with API key:', apiKey ? 'Present' : 'Missing')
     this.client = new OpenAI({ 
       apiKey,
       dangerouslyAllowBrowser: true // Enable browser usage
@@ -10,12 +11,26 @@ export class OpenAIService {
 
   async generateCompletion(prompt, options = {}) {
     try {
+      console.log('OpenAI generateCompletion called with:', {
+        promptLength: prompt.length,
+        options
+      })
+
+      const messages = [
+        { role: 'system', content: 'You are a helpful assistant that generates structured content.' },
+        { role: 'user', content: prompt }
+      ]
+
+      console.log('Sending request to OpenAI with messages:', messages)
+
       const response = await this.client.chat.completions.create({
         model: options.model || 'gpt-4',
-        messages: [{ role: 'user', content: prompt }],
+        messages,
         temperature: options.temperature || 0.7,
         max_tokens: options.maxTokens || 1000,
       })
+
+      console.log('Received response from OpenAI:', response)
 
       return {
         text: response.choices[0].message.content,
@@ -23,6 +38,12 @@ export class OpenAIService {
       }
     } catch (error) {
       console.error('OpenAI API Error:', error)
+      console.error('Error details:', {
+        message: error.message,
+        type: error.type,
+        code: error.code,
+        status: error.status
+      })
       throw new Error(`OpenAI API Error: ${error.message}`)
     }
   }

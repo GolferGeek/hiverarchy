@@ -30,7 +30,6 @@ const InterestPage = lazy(() => import('./components/InterestPage'))
 const UserProfile = lazy(() => import('./pages/UserProfile'))
 const Posts = lazy(() => import('./pages/Posts'))
 const Resume = lazy(() => import('./pages/Resume'))
-const PostWriter = lazy(() => import('./pages/PostWriter'))
 const Now = lazy(() => import('./pages/Now'))
 const EditNow = lazy(() => import('./pages/EditNow'))
 
@@ -278,11 +277,6 @@ function App() {
                                   <EditPost />
                                 </ProtectedRoute>
                               } />
-                              <Route path="/writer/:id" element={
-                                <ProtectedRoute>
-                                  <PostWriter />
-                                </ProtectedRoute>
-                              } />
                               <Route path="/manage/interests" element={
                                 <ProtectedRoute>
                                   <ManageInterests />
@@ -319,11 +313,6 @@ function App() {
                                 <Route path="edit/:id" element={
                                   <ProtectedRoute>
                                     <EditPost />
-                                  </ProtectedRoute>
-                                } />
-                                <Route path="writer/:id" element={
-                                  <ProtectedRoute>
-                                    <PostWriter />
                                   </ProtectedRoute>
                                 } />
                                 <Route path="manage/interests" element={

@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { Box, TextField, Button, Container, Paper, Typography, Divider, Grid, Stack, Chip, List, ListItem, ListItemText } from '@mui/material'
 import SaveIcon from '@mui/icons-material/Save'
 import MarkdownEditor from '../components/MarkdownEditor'
-import WriterButton from '../components/WriterButton'
 import CommentList from '../components/CommentList'
 import RefutationList from '../components/RefutationList'
 import ImageUpload from '../components/ImageUpload'
@@ -108,7 +107,6 @@ export default function EditPost() {
     setError(null)
 
     try {
-      // Update post with post_writer field preserved
       const { error } = await supabase
         .from('posts')
         .update({
@@ -120,11 +118,7 @@ export default function EditPost() {
           interest_names: post.interest_names,
           interest_ids: post.interest_ids,
           completeness: post.completeness,
-          updated_at: new Date().toISOString(),
-          post_writer: {
-            ...post.post_writer,
-            updated_at: new Date().toISOString()
-          }
+          updated_at: new Date().toISOString()
         })
         .eq('id', id)
 
@@ -306,7 +300,6 @@ export default function EditPost() {
             >
               {saving ? 'Saving...' : 'Save'}
             </Button>
-            <WriterButton postId={id} />
           </Box>
         </Box>
 
