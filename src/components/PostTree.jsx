@@ -20,13 +20,13 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ArticleIcon from '@mui/icons-material/Article'
 import { supabase } from '../lib/supabase'
 import { useIsMobile } from '../utils/responsive'
-import { UserContext } from '../context/UserContext'
+import { useProfile } from '../contexts/ProfileContext'
 
 export default function PostTree({ arcId, currentPostId, onPostSelect, isArcMode = false }) {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const { userDetails } = useContext(UserContext)
+  const { currentUsername } = useProfile()
   const isMobile = useIsMobile()
 
   useEffect(() => {
