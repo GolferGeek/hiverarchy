@@ -8,6 +8,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import PostTree from '../components/PostTree'
+import { useIsMobile } from '../utils/responsive'
 import {
   Container,
   Typography,
@@ -27,7 +28,7 @@ import {
 import { Edit as EditIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material'
 import RefutationList from '../components/RefutationList'
 
-function ViewPost() {
+export default function ViewPost() {
   const { id } = useParams()
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -43,10 +44,21 @@ function ViewPost() {
   const isChildPost = post && post.arc_id && post.arc_id !== post.id
   const { currentUsername } = useProfile()
   const [isArcMode, setIsArcMode] = useState(false)
+  const isMobile = useIsMobile()
+  const [relatedArcId, setRelatedArcId] = useState(null)
 
   useEffect(() => {
-    fetchPost()
-  }, [id])
+    if (id) {
+      setLoading(true)
+      setError(null)
+      setPost(null)
+      setParentPost(null)
+      setChildPosts([])
+      setIsArcMode(false)
+      setRelatedArcId(null)
+      fetchPost()
+    }
+  }, [id, currentUsername])
 
   useEffect(() => {
     if (post?.id) {
@@ -65,7 +77,10 @@ function ViewPost() {
         fetchParentPost(post.parent_id)
       }
       fetchChildPosts(post.id)
-      setIsArcMode(post.arc_id && post.arc_id !== post.id)
+      
+      const hasValidArcId = post.arc_id && post.arc_id !== null
+      setIsArcMode(hasValidArcId)
+      setRelatedArcId(hasValidArcId ? post.arc_id : post.id)
     }
   }, [post])
 
@@ -260,49 +275,31 @@ function ViewPost() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-      <Grid 
-        container 
-        spacing={0} 
-        sx={{ 
-          width: '100%',
-          margin: 0,
-          position: 'relative',
-          minHeight: '500px',
+    <Container maxWidth="xl" sx={{ mt: 2, mb: 4 }}>
+      <Grid container spacing={2}>
+        {/* Sidebar with PostTree */}
+        <Grid item xs={12} md={3} sx={{ 
           display: 'flex',
-          flexDirection: 'row',  // Ensure horizontal layout
-          flexWrap: 'nowrap',    // Prevent wrapping
-          gap: 4                 // Space between items
-        }}
-      >
-        {/* Post Tree */}
-        <Grid 
-          item 
-          sx={{ 
-            position: 'relative',
-            width: '375px',      // Fixed width from PostTree component
-            flexShrink: 0,       // Prevent shrinking
-            minHeight: '500px'
-          }}
-        >
+          flexDirection: 'column',
+          width: '100%', 
+          height: isMobile ? 'auto' : 'calc(100vh - 160px)',
+          mb: isMobile ? 2 : 0
+        }}>
           <PostTree 
-            arcId={post.arc_id || post.id} 
-            currentPostId={post.id}
+            arcId={relatedArcId} 
+            currentPostId={post?.id} 
             onPostSelect={handlePostSelect}
             isArcMode={isArcMode}
           />
         </Grid>
 
         {/* Main Content */}
-        <Grid 
-          item 
-          sx={{ 
-            position: 'relative',
-            flex: 1,             // Take remaining space
-            minHeight: '500px'
-          }}
-        >
-          <Paper elevation={3} sx={{ p: 4, minHeight: '500px' }}>
+        <Grid item xs={12} md={9} sx={{ width: '100%' }}>
+          <Paper elevation={3} sx={{ 
+            p: isMobile ? 2 : 4, 
+            minHeight: isMobile ? '400px' : '600px',
+            overflowX: 'auto'
+          }}>
             {/* Post Header */}
             <Box sx={{ mb: 4 }}>
               {post.parent_id && parentPost && (
@@ -314,18 +311,22 @@ function ViewPost() {
                   </Typography>
                 </Box>
               )}
-              <Typography variant="h4" gutterBottom>
+              <Typography variant={isMobile ? "h5" : "h4"} gutterBottom>
                 {post.title}
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 {format(new Date(post.created_at), 'MMMM d, yyyy')}
               </Typography>
+              
+              {/* Interests and Tags */}
               <Box sx={{ 
                 display: 'flex', 
-                gap: 4, 
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: isMobile ? 2 : 4, 
                 mt: 2, 
                 mb: 2 
               }}>
+                {/* Interests */}
                 <Box sx={{ 
                   flex: 1,
                   p: 2,
@@ -336,17 +337,22 @@ function ViewPost() {
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Interests
                   </Typography>
-                  {post.interest_names && post.interest_names.map((interest, index) => (
-                    <Chip
-                      key={index}
-                      label={interest}
-                      component={Link}
-                      to={`/interest/${interest}`}
-                      clickable
-                      sx={{ mr: 1, mb: 1 }}
-                    />
-                  ))}
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {post.interest_names && post.interest_names.map((interest, index) => (
+                      <Chip
+                        key={index}
+                        label={interest}
+                        component={Link}
+                        to={`/interest/${interest}`}
+                        clickable
+                        size={isMobile ? "small" : "medium"}
+                        sx={{ mb: 1 }}
+                      />
+                    ))}
+                  </Box>
                 </Box>
+                
+                {/* Tags */}
                 <Box sx={{ 
                   flex: 1,
                   p: 2,
@@ -357,24 +363,34 @@ function ViewPost() {
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Tags
                   </Typography>
-                  {post.tag_names && post.tag_names.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      variant="outlined"
-                      size="small"
-                      sx={{ mr: 1, mb: 1 }}
-                    />
-                  ))}
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {post.tag_names && post.tag_names.map((tag, index) => (
+                      <Chip
+                        key={index}
+                        label={tag}
+                        variant="outlined"
+                        size="small"
+                        sx={{ mb: 1 }}
+                      />
+                    ))}
+                  </Box>
                 </Box>
               </Box>
-              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+              
+              {/* Action Buttons */}
+              <Box sx={{ 
+                mt: 3, 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: 2 
+              }}>
                 {isAuthor && (
                   <>
                     <Button
                       variant="contained"
                       color="primary"
                       component={Link}
+                      fullWidth={isMobile}
                       to={`/${currentUsername}/create`}
                       state={{ parentPost: post }}
                     >
@@ -384,6 +400,7 @@ function ViewPost() {
                       variant="outlined"
                       startIcon={<EditIcon />}
                       component={Link}
+                      fullWidth={isMobile}
                       to={`/${currentUsername}/edit/${post.id}`}
                     >
                       Edit
@@ -393,6 +410,7 @@ function ViewPost() {
                       color="error"
                       startIcon={<DeleteIcon />}
                       onClick={handleDeleteClick}
+                      fullWidth={isMobile}
                     >
                       Delete
                     </Button>
@@ -506,5 +524,3 @@ function ViewPost() {
     </Container>
   )
 }
-
-export default ViewPost
