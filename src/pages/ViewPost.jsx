@@ -192,8 +192,17 @@ export default function ViewPost() {
     setShowDeleteModal(true)
   }
 
-  const handlePostSelect = async (postId) => {
+  const handlePostSelect = async (post) => {
     try {
+      // If we receive a post object, extract the ID
+      const postId = typeof post === 'object' && post !== null ? post.id : post;
+      
+      if (!postId) {
+        console.error('Invalid post ID');
+        setError('Failed to load post: Invalid post ID');
+        return;
+      }
+
       // Fetch all data in parallel
       const [postData, parentData, childData] = await Promise.all([
         supabase
