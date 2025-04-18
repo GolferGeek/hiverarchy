@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
-import { shouldShowUsernameInUrl, getRedirectPath } from '../utils/urlUtils'
+import { shouldShowUsernameInUrl, getRedirectPath, isHiverarchyDomain, extractUsernameFromDomain } from '../utils/urlUtils'
 import {
   Container,
   Box,
@@ -53,27 +53,7 @@ function Login() {
       }
 
       // Determine where to navigate after login
-      // If we came from a specific page (not login or root), go back there
-      if (from && from !== '/' && !from.includes('/login')) {
-        console.log('Returning to previous page after login:', from)
-        navigate(from)
-      } else {
-        // Navigate to the appropriate path based on domain
-        if (userProfile?.username) {
-          // If we're on a specific blog profile page, stay there
-          if (blogProfile && blogProfile.username !== userProfile.username) {
-            console.log('Staying on current blog profile:', blogProfile.username)
-            // We're already on the correct URL, no need to navigate
-          } else {
-            // Otherwise go to the user's own profile
-            const basePath = shouldShowUsernameInUrl() ? `/${userProfile.username}` : ''
-            navigate(basePath || '/')
-          }
-        } else {
-          // For profile setup, don't include username in path
-          navigate('/manage/profile')
-        }
-      }
+      await handlePostLoginNavigation();
 
     } catch (error) {
       console.error('Login error:', error)
@@ -82,6 +62,56 @@ function Login() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePostLoginNavigation = async () => {
+    // If the user doesn't have a profile yet, send them to profile setup
+    if (!userProfile?.username) {
+      console.log('No user profile found, redirecting to profile setup')
+      navigate('/manage/profile')
+      return
+    }
+
+    // First, handle specific redirects (if we came from a protected route)
+    if (from && from !== '/' && !from.includes('/login') && !from.includes('/signup')) {
+      console.log('Returning to previous page after login:', from)
+      navigate(from)
+      return
+    }
+
+    // Handle login from Hiverarchy home page - redirect to user's home
+    const isHiverarchyHomePage = isHiverarchyDomain() && 
+                              (location.pathname === '/' || location.pathname === '/login')
+    
+    if (isHiverarchyHomePage) {
+      // Redirect to the user's home page
+      console.log('Logging in from Hiverarchy home, redirecting to user home:', userProfile.username)
+      navigate(`/${userProfile.username}`)
+      return
+    }
+
+    // If we're on a specific blog that isn't the user's, stay there
+    if (blogProfile && blogProfile.username !== userProfile.username) {
+      console.log('Staying on current blog:', blogProfile.username)
+      
+      // Extract path without username
+      const pathParts = location.pathname.split('/').filter(Boolean)
+      const currentPath = pathParts.length > 0 && pathParts[0] === blogProfile.username
+        ? '/' + pathParts.slice(1).join('/')
+        : location.pathname
+        
+      // If we're on login page, redirect to the blog's home
+      if (currentPath === '/login') {
+        navigate(`/${blogProfile.username}`)
+      }
+      // Otherwise, just stay where we are
+      return
+    }
+
+    // Default: go to user's home page
+    const basePath = `/${userProfile.username}`
+    console.log('Redirecting to user home page:', basePath)
+    navigate(basePath)
   }
 
   return (
