@@ -148,18 +148,14 @@ const RouteGuard = ({ children }) => {
         // 1. We have a redirect path
         // 2. The redirect path is different from current path
         // 3. We're not already in the process of redirecting
-        // 4. The redirect doesn't contain the current path (prevents loops)
-        const isValidRedirect = redirectPath && 
-                               redirectPath !== cleanPath && 
-                               !redirectTo && 
-                               !cleanPath.includes(redirectPath) && 
-                               !redirectPath.includes(cleanPath)
-        
-        if (isValidRedirect) {
+        if (redirectPath && 
+            redirectPath !== cleanPath && 
+            !redirectTo) {
           console.log(`Redirecting from ${cleanPath} to ${redirectPath}`)
           setRedirectTo(redirectPath)
-        } else if (redirectPath) {
-          console.log(`Skipping potential redirect loop: ${cleanPath} → ${redirectPath}`)
+        } else {
+          // If we don't need to redirect or we've already set up a redirect,
+          // we can finish processing
           setIsProcessing(false)
         }
       }
